@@ -157,15 +157,17 @@ end
     @test string(SubModule.Bits) == "Main.SubModule.Bits"
     @test string(FilePerms()) == "FilePerms()"
     @test string(SubModule.Bits(:one)) == "Main.SubModule.Bits(:one)"
-    @test repr("text/plain", FilePerms) == """FlagSet $(string(FilePerms)):
-                                              EXEC = 0x01
-                                              WRITE = 0x02
-                                              READ = 0x04"""
-    @test repr("text/plain", SubModule.Bits) == """FlagSet Main.SubModule.Bits:
-                                                   one = 0x01
-                                                   two = 0x02
-                                                   four = 0x04
-                                                   eight = 0x08"""
+    @test repr("text/plain", FilePerms) ==
+          "FlagSet $(string(FilePerms)):\n" *
+          " EXEC = 0x01\n" *
+          " WRITE = 0x02\n" *
+          " READ = 0x04"
+    @test repr("text/plain", SubModule.Bits) ==
+          "FlagSet Main.SubModule.Bits:\n" *
+          " one = 0x01\n" *
+          " two = 0x02\n" *
+          " four = 0x04\n" *
+          " eight = 0x08"
     @test repr(FilePerms(:EXEC)) == "FilePerms(:EXEC)"
     @test repr(SubModule.Bits(:one)) == "Main.SubModule.Bits(:one)"
     @test repr(FilePerms(:EXEC, :READ)) == "FilePerms(:EXEC, :READ)"

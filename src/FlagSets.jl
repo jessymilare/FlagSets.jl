@@ -135,7 +135,7 @@ function Base.show(io::IO, m::MIME"text/plain", t::Type{<:FlagSet})
         xi = one(basetype(t))
         for sym ∈ flagnames(t)
             if sym != Symbol()
-                print(io, "\n", sym, " = ")
+                print(io, "\n ", sym, " = ")
                 show(io, xi)
             end
             xi <<= 1
