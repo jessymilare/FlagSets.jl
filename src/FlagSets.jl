@@ -166,17 +166,17 @@ Eash instance of `FlagSetName` represents a subset of `Set([:flag1, :flag2])`, w
 julia> @flagset FontFlags bold=1 italic=2 large=4
 
 julia> FontFlags(1)
-FontFlags(:bold)
+FontFlags(:bold) = 0x00000001
 
 julia> FontFlags(:bold, :italic)
-FontFlags(:bold, :italic)
+FontFlags(:bold, :italic) = 0x00000003
 
 julia> for flag in FontFlags(3); println(flag) end
 bold
 italic
 
 julia> FontFlags(3) | FontFlags(4)
-FontFlags(:bold, :italic, :large)
+FontFlags(:bold, :italic, :large) = 0x00000007
 ```
 
 Values can also be specified inside a `begin` block, e.g.
@@ -282,7 +282,8 @@ macro flagset(T::Union{Symbol,Expr}, syms...)
             primitive type $(esc(typename)) <: FlagSet{$(basetype)} $(sizeof(basetype) * 8) end
         )
         function $(esc(typename))(x::Integer)
-            return bitcast($(esc(typename)), convert($(basetype), x) & $(mask))
+            x & $(mask) == x || flagset_argument_error($(Expr(:quote, typename)), x)
+            return bitcast($(esc(typename)), convert($(basetype), x))
         end
         function $(esc(typename))(sym::Symbol, syms::Symbol...)
             xi::$(basetype) = get(FlagSets.namemap($(esc(typename))), sym) do
