@@ -40,13 +40,17 @@ with no value for bit 3 (value of 4).
 julia> @flagset FontFlags::UInt8 bold italic large=8
 ```
 
-Instances can be created from integers or flag names and composed with bitwise operations
+Instances can be created from integers or flag names and composed with bitwise operations.
+Flag names can be symbols or keyword arguments.
 ```julia
 julia> FontFlags(1)
 FontFlags(:bold) = 0x01
 
 julia> FontFlags(:bold, :italic)
 FontFlags(:bold, :italic) = 0x03
+
+julia> FontFlags(bold = true, italic = false, large = true)
+FontFlags(:bold, :large) = 0x09
 
 julia> FontFlags(3) | FontFlags(8)
 FontFlags(:bold, :italic, :large) = 0x0b

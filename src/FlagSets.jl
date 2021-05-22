@@ -296,6 +296,11 @@ macro flagset(T::Union{Symbol,Expr}, syms...)
             end
             $(esc(typename))(xi)
         end
+        function $(esc(typename))(; $([:($sym::Bool) for sym in fnames_filtered]...))
+            xi::$(basetype) = 0
+            $([:($sym && (xi |= $value)) for (sym, value) ∈ nm]...)
+            $(esc(typename))(xi)
+        end
         $(esc(typename))() = $(esc(typename))($(zero(basetype)))
         function $(esc(typename))(itr)
             Base.isiterable(itr) || flagset_argument_error($(Expr(:quote, typename)), sym)
