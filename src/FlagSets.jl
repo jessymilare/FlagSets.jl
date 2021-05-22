@@ -71,8 +71,7 @@ Base.union(x::T, y::T) where {T<:FlagSet} = T(basetype(T)(x) | basetype(T)(y))
 Base.intersect(x::T, y::T) where {T<:FlagSet} = T(basetype(T)(x) & basetype(T)(y))
 Base.setdiff(x::T, y::T) where {T<:FlagSet} = T(basetype(T)(x) & ~basetype(T)(y))
 Base.issubset(x::FlagSet{T}, y::FlagSet{T}) where {T<:Integer} = (T(x) & T(y)) == T(x)
-Base.in(elt::Symbol, x::T) where {T<:FlagSet} =
-    !iszero(get(namemap(T), elt, 0) & basetype(T)(x))
+Base.in(elt::Symbol, x::T) where {T<:FlagSet} = !iszero(getflag(T, elt, 0) & basetype(T)(x))
 Base.:⊊(x::FlagSet{T}, y::FlagSet{T}) where {T<:Integer} = x != y && (T(x) & T(y)) == T(x)
 
 Base.empty(s::T, ::Type{Symbol} = Symbol) where {T<:FlagSet} = T()
@@ -147,6 +146,16 @@ end
 
 @noinline flagset_argument_error(typename, x) =
     throw(ArgumentError(string("invalid value for FlagSet $(typename): $x")))
+
+Base.@pure function getflag(::Type{T}, sym::Symbol, default::Integer) where {T<:FlagSet}
+    get(namemap(T), sym, basetype(T)(default))
+end
+
+Base.@pure function getflag(::Type{T}, sym::Symbol) where {T<:FlagSet}
+    get(namemap(T), sym) do
+        flagset_argument_error(T, sym)
+    end
+end
 
 """
     @flagset FlagSetName[::BaseType] flag1[=x] flag2[=y]
@@ -285,25 +294,20 @@ macro flagset(T::Union{Symbol,Expr}, syms...)
             x & $(mask) == x || flagset_argument_error($(Expr(:quote, typename)), x)
             return bitcast($(esc(typename)), convert($(basetype), x))
         end
-        function $(esc(typename))(sym::Symbol, syms::Symbol...)
-            xi::$(basetype) = get(FlagSets.namemap($(esc(typename))), sym) do
-                flagset_argument_error($(Expr(:quote, typename)), sym)
-            end
-            for sym ∈ syms
-                xi |= get(FlagSets.namemap($(esc(typename))), sym) do
-                    flagset_argument_error($(Expr(:quote, typename)), sym)
-                end
-            end
-            $(esc(typename))(xi)
+        function $(esc(typename))(sym::Symbol)
+            $(esc(typename))(getflag($(esc(typename)), sym))
         end
-        function $(esc(typename))(; $([:($sym::Bool) for sym in fnames_filtered]...))
+        function $(esc(typename))(sym::Symbol, syms::Symbol...)
+            x = $(esc(typename))(sym)
+            isempty(syms) ? x : x | $(esc(typename))(syms...)
+        end
+        function $(esc(typename))(; $([Expr(:kw, :($sym::Bool), false) for sym in fnames_filtered]...))
             xi::$(basetype) = 0
             $([:($sym && (xi |= $value)) for (sym, value) ∈ nm]...)
             $(esc(typename))(xi)
         end
-        $(esc(typename))() = $(esc(typename))($(zero(basetype)))
         function $(esc(typename))(itr)
-            Base.isiterable(itr) || flagset_argument_error($(Expr(:quote, typename)), sym)
+            Base.isiterable(itr) || flagset_argument_error($(Expr(:quote, typename)), itr)
             $(esc(typename))(itr...)
         end
 
