@@ -3,7 +3,7 @@
 
 module FlagSets
 
-import Core.Intrinsics.bitcast
+#import Core.Intrinsics.bitcast
 export FlagSet, @flagset, flags
 
 function flagnames end
@@ -17,7 +17,7 @@ basetype(::Type{<:FlagSet{T}}) where {T<:Integer} = T
 Base.isvalid(x::T) where {T<:FlagSet} = basetype(T)(x) & basetype(T)(typemax(T)) == basetype(T)(x)
 
 # Bits manipulation
-(::Type{I})(x::FlagSet{T}) where {I<:Integer,T<:Integer} = I(bitcast(T, x))::I
+(::Type{I})(x::FlagSet{T}) where {I<:Integer,T<:Integer} = I(reinterpret(T, x))::I
 Base.cconvert(::Type{I}, x::FlagSet{T}) where {I<:Integer,T<:Integer} = I(x)
 Base.write(io::IO, x::FlagSet{T}) where {T<:Integer} = write(io, T(x))
 Base.read(io::IO, ::Type{T}) where {T<:FlagSet} = T(read(io, basetype(T)))
@@ -288,7 +288,7 @@ macro flagset(T::Union{Symbol,Expr}, syms...)
         )
         function $(esc(typename))(x::Integer)
             x & $(mask) == x || flagset_argument_error($(Expr(:quote, typename)), x)
-            return bitcast($(esc(typename)), convert($(basetype), x))
+            return reinterpret($(esc(typename)), convert($(basetype), x))
         end
         function $(esc(typename))(sym::Symbol)
             $(esc(typename))(getflag($(esc(typename)), sym))
