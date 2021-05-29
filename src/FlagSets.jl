@@ -14,6 +14,8 @@ abstract type FlagSet{T<:Integer} <: AbstractSet{Symbol} end
 
 basetype(::Type{<:FlagSet{T}}) where {T<:Integer} = T
 
+Base.isvalid(x::T) where {T<:FlagSet} = basetype(T)(x) & basetype(T)(typemax(T)) == basetype(T)(x)
+
 # Bits manipulation
 (::Type{I})(x::FlagSet{T}) where {I<:Integer,T<:Integer} = I(bitcast(T, x))::I
 Base.cconvert(::Type{I}, x::FlagSet{T}) where {I<:Integer,T<:Integer} = I(x)
@@ -26,8 +28,9 @@ Base.:⊻(x::T, y::T) where {T<:FlagSet} = T(basetype(T)(x) ⊻ basetype(T)(y))
 Base.:~(x::T) where {T<:FlagSet} = T(~basetype(T)(x))
 
 # Iterator interface
-function Base.iterate(x::FlagSet{T}) where {T<:Integer}
-    xi = T(x)
+function Base.iterate(x::T) where {T<:FlagSet}
+    xi = basetype(T)(x)
+    isvalid(x) || ArgumentError("FlagSet $T with invalid code: $xi")
     iterate(x, xi)
 end
 
@@ -41,6 +44,7 @@ end
 
 function Base.first(x::T) where {T<:FlagSet}
     xi = basetype(T)(x)
+    isvalid(x) || ArgumentError("FlagSet $T with invalid code: $xi")
     iszero(xi) && throw(ArgumentError("collection must be non-empty"))
     fs = flagnames(T)
     nbit = trailing_zeros(xi)
@@ -77,33 +81,25 @@ Base.:⊊(x::FlagSet{T}, y::FlagSet{T}) where {T<:Integer} = x != y && (T(x) & T
 Base.empty(s::T, ::Type{Symbol} = Symbol) where {T<:FlagSet} = T()
 
 # Printing
-function Base.print(io::IO, x::FlagSet)
+function Base.show(io::IO, x::T) where {T<:FlagSet}
     compact = get(io, :compact, false)::Bool
+    type_p = (get(io, :typeinfo, false) == T)::Bool
+    malformed = false
     xi = Integer(x)
-    print(io, typeof(x))
-    if compact
-        print(io, "(", xi, ")")
-    else
-        len = length(x)
-        xt = flags(x)
-        if len == 1
-            print(io, "(")
-            show(io, xt[1])
-            print(io, ")")
-        else
-            print(io, xt)
-        end
+    try
+        x == T(xi) || (malformed = true)
+    catch
+        malformed = true
     end
-end
-
-function Base.show(io::IO, x::FlagSet)
-    compact = get(io, :compact, false)::Bool
-    xi = Integer(x)
-    Base.show_datatype(io, typeof(x))
+    type_p || show(io, T)
     if compact
+        type_p || print(io, "(")
+        show(io, xi)
+        type_p || print(io, ")")
+    elseif malformed
         print(io, "(")
         show(io, xi)
-        print(io, ")")
+        print(io, " #= Invalid code =#)")
     else
         len = length(x)
         xt = flags(x)
@@ -119,7 +115,7 @@ end
 
 function Base.show(io::IO, ::MIME"text/plain", x::FlagSet)
     show(io, x)
-    if !get(io, :compact, false)
+    if !get(io, :compact, false) || get(io, :typeinfo, false)::Bool
         print(io, " = ")
         show(io, Integer(x))
     end

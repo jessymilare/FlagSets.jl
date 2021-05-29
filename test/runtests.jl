@@ -80,6 +80,24 @@ end # testset
     @test Integer(Flag7(:flag7b)) === UInt8(2)
 end # testset
 
+@testset "Validate type" begin
+    @test isvalid(Flag1(:flag1a))
+    @test isvalid(Flag1(:flag1b))
+    @test isvalid(Flag1(0x0000_0003))
+    @test !isvalid(Core.Intrinsics.bitcast(Flag1, UInt32(1<<3)))
+    @test !isvalid(Core.Intrinsics.bitcast(Flag1, UInt32(1<<4)))
+    @test !isvalid(Core.Intrinsics.bitcast(Flag1, UInt32(1<<5 | 1)))
+    @test !isvalid(Core.Intrinsics.bitcast(Flag1, UInt32(1<<29 | 1<<3)))
+
+    @test isvalid(Flag6(:flag6a))
+    @test isvalid(Flag6(:flag6b))
+    @test isvalid(Flag6(0x03))
+    @test !isvalid(Core.Intrinsics.bitcast(Flag6, UInt8(1<<3)))
+    @test !isvalid(Core.Intrinsics.bitcast(Flag6, UInt8(1<<4)))
+    @test !isvalid(Core.Intrinsics.bitcast(Flag6, UInt8(1<<5 | 1)))
+    @test !isvalid(Core.Intrinsics.bitcast(Flag6, UInt8(1<<7 | 1<<3)))
+end
+
 @testset "Error conditions" begin
 
     @test_throws ArgumentError("no arguments given for FlagSet Foo") @macrocall(@flagset Foo)
