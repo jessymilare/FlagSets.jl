@@ -1,7 +1,7 @@
 name = "FlagSets"
 uuid = "c7ad171a-416d-44a6-be7b-07ee749f090e"
 authors = ["Jéssica Milaré <jessymilare@gmail.com>"]
-version = "0.2.1"
+version = "0.3.0"
 
 [deps]
 

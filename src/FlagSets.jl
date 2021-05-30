@@ -14,7 +14,11 @@ abstract type FlagSet{T<:Integer} <: AbstractSet{Symbol} end
 
 basetype(::Type{<:FlagSet{T}}) where {T<:Integer} = T
 
-Base.isvalid(x::T) where {T<:FlagSet} = basetype(T)(x) & basetype(T)(typemax(T)) == basetype(T)(x)
+Base.isvalid(::Type{T}, x::Integer) where {T<:FlagSet} = (xi = basetype(T)(x); xi & basetype(T)(typemax(T)) == xi)
+Base.isvalid(::Type{T}, x::T) where {T<:FlagSet} = (xi = basetype(T)(x); xi & basetype(T)(typemax(T)) == xi)
+Base.isvalid(x::T) where {T<:FlagSet} = isvalid(T, x)
+Base.isvalid(::Type{T}, x::S) where {T<:FlagSet,S<:Symbol} = x ∈ flags(T)
+Base.isvalid(::Type{T}, x::S) where {T<:FlagSet,S} = Base.isiterable(S) && all(elt ∈ flags(T) for elt ∈ x)
 
 # Bits manipulation
 (::Type{I})(x::FlagSet{T}) where {I<:Integer,T<:Integer} = I(reinterpret(T, x))::I
