@@ -109,6 +109,11 @@ end # testset
     @test isvalid(Flag1, :flag1a)
     @test !isvalid(Flag1, :foo)
     @test isvalid(Flag1, [:flag1a, :flag1b])
+    @test isvalid(Flag1, (:flag1a, :flag1b))
+    @test isvalid(Flag1, Set([:flag1a, :flag1b]))
+    @test Flag1([:flag1a, :flag1b]) == Flag1(:flag1a, :flag1b)
+    @test Flag1((:flag1a, :flag1b)) == Flag1(:flag1a, :flag1b)
+    @test Flag1(Set([:flag1a, :flag1b])) == Flag1(:flag1a, :flag1b)
     @test !isvalid(Flag1, [:foo, :bar])
 end
 
