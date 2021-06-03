@@ -29,7 +29,7 @@ Base.read(io::IO, ::Type{T}) where {T<:FlagSet} = T(read(io, basetype(T)))
 Base.:|(x::T, y::T) where {T<:FlagSet} = T(basetype(T)(x) | basetype(T)(y))
 Base.:&(x::T, y::T) where {T<:FlagSet} = T(basetype(T)(x) & basetype(T)(y))
 Base.:⊻(x::T, y::T) where {T<:FlagSet} = T(basetype(T)(x) ⊻ basetype(T)(y))
-Base.:~(x::T) where {T<:FlagSet} = T(~basetype(T)(x))
+Base.:~(x::T) where {T<:FlagSet} = setdiff(typemax(T), x)
 
 # Iterator interface
 function Base.iterate(x::T) where {T<:FlagSet}

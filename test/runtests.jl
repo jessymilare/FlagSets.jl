@@ -54,6 +54,7 @@ end
     @test Flag1(7) == Flag1(:flag1a) | Flag1(:flag1b) | Flag1(:flag1c)
     @test Flag1(7) & Flag1(:flag1a) == Flag1(:flag1a)
     @test Flag1(7) ⊻ Flag1(:flag1a) == Flag1(:flag1b, :flag1c)
+    @test ~Flag1(:flag1a) == Flag1(:flag1b, :flag1c)
     @test Int(Flag1(:flag1a)) < Int(Flag1(:flag1b)) < Int(Flag1(:flag1c))
     @test Int(Flag1(:flag1a) | Flag1(:flag1b)) < Int(Flag1(:flag1c))
 end # testset
