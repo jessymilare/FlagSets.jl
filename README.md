@@ -1,3 +1,6 @@
+[![codecov](https://codecov.io/gh/jessymilare/FlagSets.jl/branch/master/graph/badge.svg?token=9BEVIJH08E)](https://codecov.io/gh/jessymilare/FlagSets.jl)
+[![Build Status](https://travis-ci.com/jessymilare/FlagSets.jl.svg?branch=master)](https://travis-ci.com/jessymilare/FlagSets.jl)
+
 # FlagSets.jl
 
 `FlagSet.jl` provides an `Enum`-like type for bit flag option values. The main motivations
