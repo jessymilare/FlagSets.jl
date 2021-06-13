@@ -25,6 +25,9 @@ end
     @test Flag1(4) == Flag1(:flag1c)
     @test flags(Flag1) == (:flag1a, :flag1b, :flag1c)
     @test Flag1(flag1a = true, flag1b = false, flag1c = true) == Flag1(:flag1a, :flag1c)
+    @test length(Flag1(:flag1a, :flag1c)) == 2
+    @test !iszero(Flag1(:flag1a, :flag1c))
+    @test iszero(Flag1())
 
     # Block definition
     @flagset Flag2 begin
@@ -36,14 +39,18 @@ end
     @test Int(Flag2(:flag2b)) == 2
     @test Int(Flag2(:flag2c)) == 4
     @test Flag2(flag2a = true, flag2b = false, flag2c = true) == Flag2(:flag2a, :flag2c)
+    @test length(Flag2(:flag2b)) == 1
+    @test !iszero(Flag2(:flag2b))
+    @test iszero(Flag2())
 
     # Explicit numbering, inline
     @flagset Flag3 flag3a = 1 flag3b flag3c = 8
     @test Int(Flag3(:flag3a)) == 1
     @test Int(Flag3(:flag3b)) == 2
     @test Int(Flag3(:flag3c)) == 8
-    @test Int(typemin(Flag3)) == 0
+    @test isempty(typemin(Flag3))
     @test Int(typemax(Flag3)) == 11
+    @test length(typemax(Flag3)) == 3
     @test Flag3(flag3a = true, flag3b = false, flag3c = true) == Flag3(:flag3a, :flag3c)
     @test flags(Flag3) == (:flag3a, :flag3b, :flag3c)
 
@@ -57,6 +64,20 @@ end
     @test ~Flag1(:flag1a) == Flag1(:flag1b, :flag1c)
     @test Int(Flag1(:flag1a)) < Int(Flag1(:flag1b)) < Int(Flag1(:flag1c))
     @test Int(Flag1(:flag1a) | Flag1(:flag1b)) < Int(Flag1(:flag1c))
+
+    # Set operations
+    @test Flag1(:flag1a) ∪ Flag1(:flag1b) ∪ Flag1(:flag1c) ==
+          Flag1(:flag1a, :flag1b, :flag1c)
+    @test Flag1(7) == Flag1(:flag1a) ∪ Flag1(:flag1b) ∪ Flag1(:flag1c)
+    @test Flag1(7) ∩ Flag1(:flag1a) == Flag1(:flag1a)
+    @test Flag1(7) ⊻ Flag1(:flag1a) == Flag1(:flag1b, :flag1c)
+    @test setdiff(typemax(Flag1), Flag1(:flag1a)) == Flag1(:flag1b, :flag1c)
+    @test :flag1a ∈ Flag1(:flag1a)
+    @test :flag1a ∉ Flag1(:flag1b, :flag1c)
+    @test Flag1(:flag1b) ⊊ Flag1(:flag1b, :flag1c)
+    @test Flag1(:flag1c) ⊊ Flag1(:flag1b, :flag1c)
+    @test !(Flag1(:flag1b, :flag1c) ⊊ Flag1(:flag1b, :flag1c))
+    @test !(Flag1(:flag1a, :flag1b) ⊊ Flag1(:flag1b, :flag1c))
 end # testset
 
 @testset "Type properties" begin

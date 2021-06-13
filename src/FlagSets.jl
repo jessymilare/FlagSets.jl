@@ -30,6 +30,7 @@ Base.:|(x::T, y::T) where {T<:FlagSet} = T(basetype(T)(x) | basetype(T)(y))
 Base.:&(x::T, y::T) where {T<:FlagSet} = T(basetype(T)(x) & basetype(T)(y))
 Base.:⊻(x::T, y::T) where {T<:FlagSet} = T(basetype(T)(x) ⊻ basetype(T)(y))
 Base.:~(x::T) where {T<:FlagSet} = setdiff(typemax(T), x)
+Base.iszero(x::FlagSet) = isempty(x)
 
 # Iterator interface
 function Base.iterate(x::T) where {T<:FlagSet}
