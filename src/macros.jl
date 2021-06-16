@@ -255,7 +255,8 @@ function parse_flag_set_type(typespec, of_type, symflags::Bool, __module__)
         if !symflags
             @warn(
                 "Deprecated syntax for macro @flagset. Use @symbol_flagset or use the syntax: " *
-                "@flagset $(typespec.args[1]) {Symbol,$(typespec.args[2])}",
+                "@flagset $(typespec.args[1]) {Symbol,$(typespec.args[2])}" * 
+                " [bit_1 -->] :flag_1 [bit_2 -->] :flag_2 ...",
                 maxlog = 1,
             )
         end

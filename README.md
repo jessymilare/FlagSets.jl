@@ -27,7 +27,7 @@ corresponds to the old `@flagset` macro.
 
 ## Symbol flag sets
 
-To create a new `FlagSet{Symbol}` type, use the `@flagset` macro, provide a name, an
+To create a new `FlagSet{Symbol}` type, use the `@@symbol_flagset` macro, provide a name, an
 optional integer type, and a list of the flag names (with optional associated bits).
 A new definition can be given in inline form:
 ```julia

@@ -206,8 +206,8 @@ end # testset
 
 # In submodule and not imported to test prefix printing
 module SubModule
-using ..FlagSets
-@symbol_flagset Bits::UInt8 one two four eight
+    using ..FlagSets
+    @symbol_flagset Bits::UInt8 one two four eight
 end
 
 @testset "String representations" begin
@@ -218,7 +218,10 @@ end
     @test string(FilePerms()) == "FilePerms([])"
     @test string(SubModule.Bits(:one)) == "Main.SubModule.Bits([:one])"
     @test repr("text/plain", FilePerms) ==
-          "FlagSet $(string(FilePerms)):\n" * " 0x01 --> :EXEC\n" * " 0x02 --> :WRITE\n" * " 0x04 --> :READ"
+          "FlagSet $(string(FilePerms)):\n" *
+          " 0x01 --> :EXEC\n" *
+          " 0x02 --> :WRITE\n" *
+          " 0x04 --> :READ"
     @test repr("text/plain", SubModule.Bits) ==
           "FlagSet Main.SubModule.Bits:\n" *
           " 0x01 --> :one\n" *
@@ -252,5 +255,5 @@ end
         @test String(take!(io)) == "FilePerms(0x05)"
         show(ioc, SubModule.Bits(:one, :eight))
         @test String(take!(io)) == "Bits(0x09)"
-    end # testset
-end
+    end
+end # testset

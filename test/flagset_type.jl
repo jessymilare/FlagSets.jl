@@ -299,5 +299,5 @@ end
         @test String(take!(io)) == "TFilePerms(0x05)"
         show(ioc, TSubModule.TBits([1, 4]))
         @test String(take!(io)) == "TBits(0x09)"
-    end # testset
-end
+    end
+end # testset
