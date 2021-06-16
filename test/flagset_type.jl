@@ -165,70 +165,55 @@ end
 
 @testset "Error conditions" begin
 
-    @test_throws(ArgumentError("no arguments given for FlagSet Foo"), @macrocall(@flagset Foo))
+    @test_throws(
+        ArgumentError("no arguments given for FlagSet Foo"),
+        @macrocall(@flagset Foo),
+    )
     @test_throws(
         ArgumentError("invalid base type for FlagSet Foo: Float64; should be an integer type"),
-        @macrocall(@flagset Foo {_, Float64} x = 1.0)
+        @macrocall(@flagset Foo {_, Float64} x = 1.0),
     )
     @test_throws(
         ArgumentError("invalid flag type for FlagSet Foo: 1234"),
-        @macrocall(@flagset Foo {1234} x = 1.0)
+        @macrocall(@flagset Foo {1234} x = 1.0),
     )
-
     # Require uniqueness
     @test_throws(
         ArgumentError("bits for FlagSet Foo are not unique"),
-        @macrocall(@flagset Foo x = 1 --> :x y = 1 --> :y)
+        @macrocall(@flagset Foo x = 1 --> :x y = 1 --> :y),
     )
     @test_throws(
         ArgumentError("bits for FlagSet Foo are not unique"),
-        @macrocall(@flagset Foo x = 2 --> :x y = 2 --> :y)
+        @macrocall(@flagset Foo x = 2 --> :x y = 2 --> :y),
     )
-
     # Explicit bits must be powers of two
     @test_throws(
-        ArgumentError(
-            "invalid bit for FlagSet Foo: $(:(_three = 3 --> nothing)); " *
-            "should be an integer positive power of 2",
-        ),
-        @macrocall(@flagset Foo _three = 3 --> nothing)
+        invalid_bit_error(:Foo, :(_three = 3 --> nothing)),
+        @macrocall(@flagset Foo _three = 3 --> nothing),
     )
-
     # Values must be integers
     @test_throws(
-        ArgumentError(
-            "invalid bit for FlagSet Foo: $(:(_zero = "zero" --> nothing)); " *
-            "should be an integer positive power of 2",
-        ),
-        @macrocall(@flagset Foo _zero = "zero" --> nothing)
+        invalid_bit_error(:Foo, :(_zero = "zero" --> nothing)),
+        @macrocall(@flagset Foo _zero = "zero" --> nothing),
     )
     @test_throws(
-        ArgumentError(
-            "invalid bit for FlagSet Foo: $(:('0' --> nothing)); " *
-            "should be an integer positive power of 2",
-        ),
-        @macrocall(@flagset Foo '0' --> nothing)
+        invalid_bit_error(:Foo, :('0' --> nothing)),
+        @macrocall(@flagset Foo '0' --> nothing),
     )
     @test_throws(
-        ArgumentError(
-            "invalid bit for FlagSet Foo: $(:(0.5 --> nothing)); " *
-            "should be an integer positive power of 2",
-        ),
-        @macrocall(@flagset Foo 0.5 --> nothing)
+        invalid_bit_error(:Foo, :(0.5 --> nothing)),
+        @macrocall(@flagset Foo 0.5 --> nothing),
     )
-
     # Names must be valid identifiers
     @test_throws(
-        ArgumentError("invalid argument for FlagSet Foo: 1 = 2"),
-        @macrocall(@flagset Foo 1 = 2)
+        invalid_flagspec_error(:Foo, :(1 = 2)),
+        @macrocall(@flagset Foo 1 = 2),
     )
-
     # Disallow bit overflow
     @test_throws(
         ArgumentError("overflow in bit \"y = nothing\" of FlagSet Foo"),
         @macrocall(@flagset Foo {nothing, UInt32} x = UInt32(1) << 31 --> missing y = nothing)
     )
-
 end # testset
 
 @testset "Input/Output" begin

@@ -217,15 +217,31 @@ macro flagset(typespec::Union{Symbol,Expr}, flagspecs...)
     try
         return expand_flagset(typespec, flagspecs, false, __module__)
     catch ex
-        if ex isa UndefVarError
-            error(
-                "An $ex has been caught during macroexpansion of @flagset. If you are " *
-                "using the old syntax (before version 0.3), use @symbol_flagset instead.",
-            )
-        else
-            throw(ex)
-        end
+        throw(ex isa UndefVarError ? undef_var_error_hint(ex) : ex)
     end
+end
+
+## Error creation
+
+function undef_var_error_hint(ex)
+    ErrorException(
+        "An $ex has been caught during macroexpansion of @flagset. If you want to use " *
+        "the old syntax (before version 0.3), use @symbol_flagset instead."
+    )
+end
+
+function deprecated_syntax_message(typename, BaseType)
+    ArgumentError("Deprecated syntax for macro @flagset. Use @symbol_flagset or use the syntax: " *
+    "@flagset $typename {Symbol,$BaseType)} [bit_1 -->] :flag_1 [bit_2 -->] :flag_2 ..."
+    )
+end
+
+function invalid_bit_error(typename, flagspec)
+    ArgumentError("invalid bit for FlagSet $typename: $flagspec; should be an integer positive power of 2")
+end
+
+function invalid_flagspec_error(typename, flagspec)
+    ArgumentError("invalid flag argument for FlagSet $typename: $flagspec")
 end
 
 ## Helper functions
@@ -261,14 +277,7 @@ function parse_flag_set_type(typespec, of_type, symflags::Bool, __module__)
         length(typespec.args) == 2 &&
         isa(typespec.args[1], Symbol)
     )
-        if !symflags
-            @warn(
-                "Deprecated syntax for macro @flagset. Use @symbol_flagset or use the syntax: " *
-                "@flagset $(typespec.args[1]) {Symbol,$(typespec.args[2])}" * 
-                " [bit_1 -->] :flag_1 [bit_2 -->] :flag_2 ...",
-                maxlog = 1,
-            )
-        end
+        symflags || @warn(deprecated_syntax_message(typespec.args[1], typespec.args[2]), maxlog = 1)
         FlagType = Symbol
         typename = typespec.args[1]
         BaseType = Core.eval(__module__, typespec.args[2])
@@ -315,15 +324,10 @@ function parse_flag_spec(typename, FlagType, flagspec, symflags::Bool, __module_
         key = flag isa Symbol ? flag : flag_expr isa Symbol ? flag_expr : nothing
     end
     if isnothing(flag_value) || !(key isa Union{Symbol,Nothing})
-        throw(ArgumentError("invalid argument for FlagSet $typename: $flagspec"))
+        throw(invalid_flagspec_error(typename, flagspec))
     end
     if !isnothing(bit)
-        if !(bit isa Real && bit >= 1 && ispow2(bit))
-            msg =
-                "invalid bit for FlagSet $typename: $(string(flagspec)); " *
-                "should be an integer positive power of 2"
-            throw(ArgumentError(msg))
-        end
+        (bit isa Real && bit >= 1 && ispow2(bit)) || throw(invalid_bit_error(typename, flagspec))
     end
     (key, flag, bit)
 end

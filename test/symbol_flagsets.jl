@@ -119,89 +119,72 @@ end
 
 @testset "Error conditions" begin
 
-    @test_throws(ArgumentError("no arguments given for FlagSet Foo"), @macrocall(@symbol_flagset Foo))
+    @test_throws(
+        ArgumentError("no arguments given for FlagSet Foo"),
+        @macrocall(@symbol_flagset Foo),
+    )
     @test_throws(
         ArgumentError("invalid base type for FlagSet Foo: Float64; should be an integer type"),
-        @macrocall(@symbol_flagset Foo::Float64 x = 1.0)
+        @macrocall(@symbol_flagset Foo::Float64 x = 1.0),
     )
-
     @test_throws(
         ArgumentError("invalid type expression for FlagSet: 1234 + 1"),
-        @macrocall(@symbol_flagset 1234 + 1 x = 1 y = 2)
+        @macrocall(@symbol_flagset 1234 + 1 x = 1 y = 2),
     )
-
     @test_throws(
         ArgumentError("invalid type expression for FlagSet: 1234::UInt"),
-        @macrocall(@symbol_flagset 1234::UInt x = 1 y = 2)
+        @macrocall(@symbol_flagset 1234::UInt x = 1 y = 2),
     )
-
     # Require uniqueness
     @test_throws(
         ArgumentError("bits for FlagSet Foo are not unique"),
-        @macrocall(@symbol_flagset Foo x = 1 y = 1)
+        @macrocall(@symbol_flagset Foo x = 1 y = 1),
     )
     @test_throws(
         ArgumentError("bits for FlagSet Foo are not unique"),
-        @macrocall(@symbol_flagset Foo x = 2 y = 2)
+        @macrocall(@symbol_flagset Foo x = 2 y = 2),
     )
-
     # Explicit bits must be powers of two
     @test_throws(
-        ArgumentError(
-            "invalid bit for FlagSet Foo: _three = 3; should be an integer positive power of 2",
-        ),
-        @macrocall(@symbol_flagset Foo _three = 3)
+        invalid_bit_error(:Foo, :(_three = 3)),
+        @macrocall(@symbol_flagset Foo _three = 3),
     )
-
     # Values must be integers
     @test_throws(
-        ArgumentError(
-            "invalid bit for FlagSet Foo: _zero = \"zero\"; should be an integer positive power of 2",
-        ),
-        @macrocall(@symbol_flagset Foo _zero = "zero")
+        invalid_bit_error(:Foo, :(_zero = "zero")),
+        @macrocall(@symbol_flagset Foo _zero = "zero"),
     )
     @test_throws(
-        ArgumentError(
-            "invalid bit for FlagSet Foo: _zero = '0'; should be an integer positive power of 2",
-        ),
-        @macrocall(@symbol_flagset Foo _zero = '0')
+        invalid_bit_error(:Foo, :(_zero = '0')),
+        @macrocall(@symbol_flagset Foo _zero = '0'),
     )
     @test_throws(
-        ArgumentError(
-            "invalid bit for FlagSet Foo: _zero = 0.5; should be an integer positive power of 2",
-        ),
-        @macrocall(@symbol_flagset Foo _zero = 0.5)
+        invalid_bit_error(:Foo, :(_zero = 0.5)),
+        @macrocall(@symbol_flagset Foo _zero = 0.5),
     )
-
     # Names must be valid identifiers
     @test_throws(
-        ArgumentError("""invalid argument for FlagSet Foo: if x
-                            1
-                        else
-                            2
-                        end"""),
-        @macrocall(@symbol_flagset Foo x ? 1 : 2)
+        invalid_flagspec_error(:Foo, :(x ? 1 : 2)),
+        @macrocall(@symbol_flagset Foo x ? 1 : 2),
     )
     @test_throws(
-        ArgumentError("invalid argument for FlagSet Foo: 1 = 2"),
-        @macrocall(@symbol_flagset Foo 1 = 2)
+        invalid_flagspec_error(:Foo, :(1 = 2)),
+        @macrocall(@symbol_flagset Foo 1 = 2),
     )
-
     # Disallow bit overflow
     @test_throws(
         ArgumentError("overflow in bit \"y\" of FlagSet Foo"),
-        @macrocall(@symbol_flagset Foo::UInt32 x = (UInt32(1) << 31) y)
+        @macrocall(@symbol_flagset Foo::UInt32 x = (UInt32(1) << 31) y),
     )
-
+    # Deprecated messages
     @test_logs(
-        (
-            :warn,
-            "Deprecated syntax for macro @flagset. Use @symbol_flagset or use the syntax: " *
-            "@flagset MyFlags {Symbol,UInt32} [bit_1 -->] :flag_1 [bit_2 -->] :flag_2 ..."
-        ),
-        @macrocall(@flagset MyFlags::UInt32 x = 1 y = 2)
+        (:warn, deprecated_syntax_message(:MyFlags,:UInt32)),
+        @macrocall(@flagset MyFlags::UInt32 x = 1 y = 2),
     )
-
+    @test_throws(
+        undef_var_error_hint(UndefVarError(:x)),
+        @macrocall(@flagset MyFlags2 x)
+    )
 end # testset
 
 @testset "Input/Output" begin
