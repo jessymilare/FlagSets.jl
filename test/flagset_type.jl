@@ -128,13 +128,13 @@ end # testset
     # Correctly detect base type
     @flagset TFlag8 {} missing (Int64(1) << 60) --> nothing
     @test eltype(TFlag8) == Union{Missing,Nothing}
-    @test typeof(convert(Integer, TFlag8())) == UInt64
-    @test typeof(convert(Int, TFlag8())) == Int
+    @test typeof(Integer(TFlag8())) == UInt64
+    @test typeof(Int(TFlag8())) == Int
 
     @flagset TFlag9 {Any} missing (Int128(1) << 120) --> nothing
     @test eltype(TFlag9) == Any
-    @test typeof(convert(Integer, TFlag9())) == UInt128
-    @test typeof(convert(Int, TFlag9())) == Int
+    @test typeof(Integer(TFlag9())) == UInt128
+    @test typeof(Int(TFlag9())) == Int
 end # testset
 
 @testset "Validate type" begin

@@ -21,8 +21,6 @@ end
 
 (::Type{I})(x::FlagSet) where {I<:Integer} = I(x.bitflags)::I
 Base.cconvert(::Type{I}, x::FlagSet) where {I<:Integer} = I(x.bitflags)
-Base.convert(::Type{I}, x::FlagSet) where {I<:Integer} = I(x.bitflags)
-Base.convert(::Type{T}, x::Integer) where {T<:FlagSet} = T(x)
 Base.write(io::IO, x::T) where {T<:FlagSet} = write(io, x.bitflags)
 Base.read(io::IO, ::Type{T}) where {T<:FlagSet} = T(read(io, basetype(T)))
 #Base.isless(x::FlagSet{T}, y::FlagSet{T}) where {T<:Integer} = isless(T(x), T(y))
