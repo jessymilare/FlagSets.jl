@@ -35,7 +35,7 @@
     @test eltype(TFlag2) == RoundingMode
 
     # Explicit numbering, inline
-    @flagset TFlag3 {} down = 2 --> RoundDown RoundUp near = 16 --> RoundNearest
+    @flagset TFlag3 {_,_} down = 2 --> RoundDown RoundUp near = 16 --> RoundNearest
     @test Int(TFlag3(down = true)) == 2
     @test Int(TFlag3([RoundUp])) == 4
     @test Int(TFlag3(near = true)) == 16
@@ -103,7 +103,7 @@ end # testset
     @test isbits(TFlag5(:flag5a))
 
     # Construct non-default and infer type
-    @flagset TFlag6 {nothing, UInt16} begin
+    @flagset TFlag6 {_, UInt16} begin
         foo = 2 --> Foo
         bar = Bar
         16 --> Baz
@@ -131,7 +131,7 @@ end # testset
     @test typeof(Integer(TFlag8())) == UInt64
     @test typeof(Int(TFlag8())) == Int
 
-    @flagset TFlag9 {Any} missing (Int128(1) << 120) --> nothing
+    @flagset TFlag9 {Any,_} missing (Int128(1) << 120) --> nothing
     @test eltype(TFlag9) == Any
     @test typeof(Integer(TFlag9())) == UInt128
     @test typeof(Int(TFlag9())) == Int
@@ -168,7 +168,7 @@ end
     @test_throws(ArgumentError("no arguments given for FlagSet Foo"), @macrocall(@flagset Foo))
     @test_throws(
         ArgumentError("invalid base type for FlagSet Foo: Float64; should be an integer type"),
-        @macrocall(@flagset Foo {nothing, Float64} x = 1.0)
+        @macrocall(@flagset Foo {_, Float64} x = 1.0)
     )
     @test_throws(
         ArgumentError("invalid flag type for FlagSet Foo: 1234"),

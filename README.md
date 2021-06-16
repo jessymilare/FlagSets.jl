@@ -22,50 +22,61 @@ some differences:
 4. Each flag can be represented by objects of arbitrary type (new in 0.3).
 
 _Note:_ A breaking change has been introduced in version 0.3. The macro `@symbol_flagset`
-corresponds to the old `@flagset` macro.
+corresponds to the old `@flagset` macro and the latter has been made more general.
 
 
 ## Symbol flag sets
 
-To create a new `FlagSet{Symbol}` type, use the `@@symbol_flagset` macro, provide a name, an
-optional integer type, and a list of the flag names (with optional associated bits).
+To create a new `FlagSet{Symbol}` type, you can use the `@symbol_flagset` macro
+(old syntax) or the more general and flexible `@flagset` macro.
+You need to provide a type name, an optional integer type, and a list of the flag
+names (with optional associated bits).
 A new definition can be given in inline form:
 ```julia
-@symbol_flagset FlagSetName[::BaseType] flag_1[=bit_1] flag_2[=bit_2]
+@symbol_flagset FlagSetName[::BaseType] flag_1[=bit_1] flag_2[=bit_2] ...
+
+@flagset FlagSetName [{Symbol,BaseType}] [bit_1 -->] :flag_1 [bit_2 -->] :flag_2 ...
 ```
 or as a block definition:
 ```julia
 @symbol_flagset FlagSetName[::BaseType] begin
     flag_1[=bit_1]
     flag_2[=bit_2]
+    ...
+end
+
+@flagset FlagSetName [{Symbol,BaseType}] begin
+    [bit_1 -->] :flag_1
+    [bit_2 -->] :flag_2
+    ...
 end
 ```
 
 Automatic numbering starts at 1. In the following example, we build an 8-bit `FlagSet`
 with no value for bit 3 (value of 4).
 ```julia
-julia> @symbol_flagset FontFlags::UInt8 bold italic large=8
+julia> @flagset FontFlags1 :bold :italic 8 --> :large
 ```
 
 Instances can be created from integers or flag names and composed with bitwise operations.
 Flag names can be symbols or keyword arguments.
 ```julia
-julia> FontFlags(1)
-FontFlags with 1 element:
+julia> FontFlags1(1)
+FontFlags1 with 1 element:
   :bold
 
-julia> FontFlags(:bold, :italic)
-FontFlags with 2 elements:
+julia> FontFlags1(:bold, :italic)
+FontFlags1 with 2 elements:
   :bold
   :italic
 
-julia> FontFlags(bold = true, italic = false, large = true)
-FontFlags with 2 elements:
+julia> FontFlags1(bold = true, italic = false, large = true)
+FontFlags1 with 2 elements:
   :bold
   :large
 
-julia> FontFlags(3) | FontFlags(8)
-FontFlags with 3 elements:
+julia> FontFlags1(3) | FontFlags1(8)
+FontFlags1 with 3 elements:
   :bold
   :italic
   :large
@@ -73,42 +84,63 @@ FontFlags with 3 elements:
 
 Flag sets support iteration and other set operations
 ```julia
-julia> for flag in FontFlags(3); println(flag) end
+julia> for flag in FontFlags1(3); println(flag) end
 bold
 italic
 
-julia> :bold in FontFlags(3)
+julia> :bold in FontFlags1(3)
 true
 ```
 
 Conversion to and from integers is permitted, but only when the integer contains valid
 bits for the flag set type.
 ```julia
-julia> Int(FontFlags(:bold))
+julia> Int(FontFlags1(:bold))
 1
 
-julia> Integer(FontFlags(:italic))    # Abstract Integer uses supplied UInt8 type
-0x02
+julia> Integer(FontFlags1(:italic))    # Abstract Integer uses base type
+0x00000002
 
-julia> FontFlags(9)
-FontFlags with 2 elements:
+julia> FontFlags1(9)
+FontFlags1 with 2 elements:
   :bold
   :large
 
-julia> FontFlags(4)
-ERROR: ArgumentError: invalid value for FlagSet FontFlags: 4
+julia> FontFlags1(4)
+ERROR: ArgumentError: invalid value for FlagSet FontFlags1: 4
 Stacktrace:
 ...
+```
+
+Supplying a different BaseType:
+
+```
+julia> @flagset FontFlags2 {Symbol,UInt8} :bold :italic 8 --> :large
+
+# Or let the macro infer the flag type
+julia> @flagset FontFlags3 {_,UInt8} :bold :italic 8 --> :large
+
+julia> Integer(FontFlags2(:italic))
+0x02
+
+julia> Integer(FontFlags3(:italic))
+0x02
+
+julia> eltype(FontFlags2) == eltype(FontFlags3) == Symbol
+true
 ```
 
 The empty and the full set can be created with `typemin` and `typemax` (which is
 consistent with these function definitions).
 ```julia
-julia> typemin(FontFlags)
-FontFlags() = 0x00
+julia> typemin(FontFlags1)
+FontFlags1([])
 
-julia> typemax(FontFlags)
-FontFlags(:bold, :italic, :large) = 0x0b
+julia> typemax(FontFlags1)
+FontFlags1 with 3 elements:
+  :bold
+  :italic
+  :large
 ```
 
 
@@ -145,9 +177,9 @@ julia> Integer(RoundingFlags2([RoundDown, RoundUp]))
 0x00000005
 ```
 
-`RoundingFlags3` also specifies keys for flags (except the last):
+`RoundingFlags3` also specifies keys for flags (except the last), flag and base types:
 ```
-julia> @flagset RoundingFlags3 begin
+julia> @flagset RoundingFlags3 {Any,UInt8} begin
     down = RoundDown
     up = RoundUp
     near = 16 --> RoundNearest
@@ -158,14 +190,20 @@ julia> RoundingFlags3(up = true, near = true)
 RoundingFlags3 with 2 elements:
   RoundingMode{:Up}()
   RoundingMode{:Nearest}()
+
+julia> eltype(RoundingFlags3)
+Any
+
+julia> typeof(Integer(RoundingFlags3()))
+UInt8
 ```
 
 ## Printing
 
 Printing a `FlagSet` subtype shows usefull information about it:
 ```julia
-julia> FontFlags
-FlagSet FontFlags:
+julia> FontFlags1
+FlagSet FontFlags1:
  0x01 --> :bold
  0x02 --> :italic
  0x08 --> :large
@@ -181,17 +219,17 @@ FlagSet RoundingFlags3:
 In a compact context (such as in multi-dimensional arrays), the pretty-printing
 takes on a shorter form:
 ```julia
-julia> [FontFlags(), FontFlags(:bold, :large)]
-2-element Vector{FontFlags}:
- FontFlags([])
- FontFlags([:bold, :large])
+julia> [FontFlags1(), FontFlags1(:bold, :large)]
+2-element Vector{FontFlags1}:
+ FontFlags1([])
+ FontFlags1([:bold, :large])
 
 julia> [RoundingFlags3() RoundingFlags3([RoundUp, RoundNearest])]
 1×2 Matrix{RoundingFlags3}:
  RoundingFlags3(0x00000000)  RoundingFlags3(0x00000012)
 
-julia> show(IOContext(stdout, :compact => true), FontFlags(:bold, :large))
-FontFlags(0x09)
+julia> show(IOContext(stdout, :compact => true), FontFlags1(:bold, :large))
+FontFlags1(0x09)
 ```
 ## Input/Output
 
@@ -203,8 +241,8 @@ julia> write(io, UInt8(9));
 
 julia> seekstart(io);
 
-julia> read(io, FontFlags)
-FontFlags with 2 elements:
+julia> read(io, FontFlags1)
+FontFlags1 with 2 elements:
   :bold
   :large
 ```

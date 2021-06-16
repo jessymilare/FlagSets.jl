@@ -193,6 +193,15 @@ end
         @macrocall(@symbol_flagset Foo::UInt32 x = (UInt32(1) << 31) y)
     )
 
+    @test_logs(
+        (
+            :warn,
+            "Deprecated syntax for macro @flagset. Use @symbol_flagset or use the syntax: " *
+            "@flagset MyFlags {Symbol,UInt32} [bit_1 -->] :flag_1 [bit_2 -->] :flag_2 ..."
+        ),
+        @macrocall(@flagset MyFlags::UInt32 x = 1 y = 2)
+    )
+
 end # testset
 
 @testset "Input/Output" begin

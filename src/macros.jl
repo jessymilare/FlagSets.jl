@@ -71,7 +71,7 @@ end
 If `BaseType` is provided, it must be an `Integer` type big enough to represent each
 `bit_i`. Otherwise, some convenient integer type is inferred
 (`UInt32` is used if possible, to guarantee compatibility with C code).
-Eash instance of `T` can be converted to `BaseType`, where each bit set in the
+Each instance of `T` can be converted to `BaseType`, where each bit set in the
 converted `BaseType` corresponds to a flag in the flag set. `read` and `write`
 perform these conversions automatically. In case the flagset is created with a non-default
 `BaseType`, `Integer(flagset)` will return the integer `flagset` with the type `BaseType`.
@@ -113,6 +113,9 @@ The following constructors are created:
     - `T(; kwargs...)`: each `key_i` can be given as a keyword with boolean value
     (`key_i = true` includes `flag_i`, `key_i = false` excludes it).
 
+The macroexpansion tries to infer key names from the expression or value of each flag.
+This is guaranteed to work for `Symbol` flags, and flags that use a `const` variable.
+
 If all flags are `Symbol`s, the simpler macro [`@symbol_flagset`](@ref) can be used.
 Flags can also be specified inside a `begin` block.
 
@@ -130,9 +133,10 @@ RoundingFlags with 2 elements:
   RoundingMode{:Down}()
   RoundingMode{:Up}()
 
-julia> RoundingFlags(near = true, up = false)
-RoundingFlags with 1 element:
+julia> RoundingFlags(near = true, up = false, RoundNearestTiesUp = true)
+RoundingFlags with 2 elements:
   RoundingMode{:Nearest}()
+  RoundingMode{:NearestTiesUp}()
 
 julia> RoundingFlags(1)
 RoundingFlags with 1 element:
@@ -167,19 +171,20 @@ The following syntaxes can be used to provide `FlagType` and/or `BaseType`:
 ```julia
 @flagset T {FlagType,BaseType} ... # Use supplied types
 @flagset T {FlagType} ...          # Detect BaseType
-@flagset T {nothing,BaseType} ...  # Detect FlagType
+@flagset T {FlagType,_} ...        # Detect BaseType too
+@flagset T {_,BaseType} ...        # Detect FlagType
 @flagset T {} ...                  # Braces are ignored
 ```
 
-If `FlagType` is not provided or is nothing, it is inferred from the flag values
+If `FlagType` is not provided or is `_`, it is inferred from the flag values
 (like array constructors do).
 Otherwise, `flag_1`, `flag_2`, etc, must be of type `FlagType`.
 
-If `BaseType` is provided, it must be an `Integer` type big enough to represent each
-`bit_i`. Otherwise, some convenient integer type is inferred
+If `BaseType` is not provided or is `_`, some convenient integer type is inferred
 (`UInt32` is used if possible, for maximum compatibility with C code).
+Otherwise, it must be an `Integer` type big enough to represent each `bit_i`.
 
-Eash instance of `T` can be converted to `BaseType`, where each bit set in the
+Each instance of `T` can be converted to `BaseType`, where each bit set in the
 converted `BaseType` corresponds to a flag in the flag set. `read` and `write`
 perform these conversions automatically. In case the flagset is created with a non-default
 `BaseType`, `Integer(flagset)` will return the integer `flagset` with the type `BaseType`.
@@ -205,7 +210,7 @@ julia> flags(RoundingFlags(3))
 !!! note
 
     For backward compatibility, the syntax `@flagset T::BaseType ...` is equivalent to
-    `@symbol_flagset T::BaseType ...`, but is deprecated
+    `@symbol_flagset T::BaseType ...`, but the former syntax deprecated
     (use [`symbol_flagset`](@ref) instead).
 """
 macro flagset(typespec::Union{Symbol,Expr}, flagspecs...)
@@ -235,6 +240,10 @@ function check_flag_type(FlagType, typename)
     (isnothing(FlagType) || FlagType isa Type) || throw(ArgumentError(msg))
 end
 
+function infer_type(expr, __module__)
+    expr == :_ ? nothing : Core.eval(__module__, expr)
+end
+
 function parse_flag_set_type(typespec, of_type, symflags::Bool, __module__)
     BaseType = nothing
     FlagType = symflags ? Symbol : nothing
@@ -242,8 +251,8 @@ function parse_flag_set_type(typespec, of_type, symflags::Bool, __module__)
     if !isnothing(of_type)
         if typespec isa Symbol && 0 ≤ length(of_type.args) ≤ 2
             typename = typespec
-            length(of_type.args) ≥ 1 && (FlagType = Core.eval(__module__, of_type.args[1]))
-            length(of_type.args) ≥ 2 && (BaseType = Core.eval(__module__, of_type.args[2]))
+            length(of_type.args) ≥ 1 && (FlagType = infer_type(of_type.args[1], __module__))
+            length(of_type.args) ≥ 2 && (BaseType = infer_type(of_type.args[2], __module__))
             # else typename = nothing # indicate error
         end
     elseif (
