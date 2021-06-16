@@ -4,6 +4,7 @@
 function all_flags end
 function flags end
 function flag_bit_map end
+function flag_keys end
 
 basetype(::Type{<:FlagSet{F,B}}) where {F,B<:Integer} = B
 
@@ -122,22 +123,27 @@ function Base.show(io::IO, mime::MIME"text/plain", x::FlagSet)
     if get(io, :compact, false)
         show(io, x)
     else
-        invoke(show, Tuple{IO, MIME"text/plain", AbstractSet}, io, mime,  x)
+        invoke(show, Tuple{IO, typeof(mime), AbstractSet}, io, mime,  x)
     end
 end
 
 # Printing FlagSet type
-function Base.show(io::IO, m::MIME"text/plain", t::Type{<:FlagSet})
-    if isconcretetype(t)
+function Base.show(io::IO, mime::MIME"text/plain", type::Type{<:FlagSet})
+    if isconcretetype(type) && !(get(io, :compact, false))
         print(io, "FlagSet ")
-        Base.show_datatype(io, t)
+        Base.show_datatype(io, type)
         print(io, ":")
-        flags_bits = sort(collect(flag_bit_map(t)), by = p -> p[2])
-        for (flag, bit) ∈ flags_bits
-            print(io, "\n ", repr(bit), " --> ", repr(flag))
+        keys = map(key -> isnothing(key) ? "" : String(key), flag_keys(type))
+        if !all(isempty, keys)
+            klen = maximum(length, keys)
+            keys = map(k -> isempty(k) ? ' '^(klen+2) : k * ' '^(klen-length(k)) * " = ", keys)
+        end
+        for (flag, key) ∈ zip(flags(type), keys)
+            bit = getflag(type, flag)
+            print(io, "\n ", key, repr(bit), " --> ", repr(flag))
         end
     else
-        invoke(show, Tuple{IO,typeof(m),Type}, io, m, t)
+        invoke(show, Tuple{IO,typeof(mime),Type}, io, mime, type)
     end
 end
 

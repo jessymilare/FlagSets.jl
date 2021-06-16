@@ -5,7 +5,8 @@ using FlagSets
 using Test, Serialization
 
 using FlagSets: deprecated_syntax_message, undef_var_error_hint
-using FlagSets: invalid_bit_error, invalid_flagspec_error
+using FlagSets: invalid_bit_error, invalid_flagspec_error, invalid_type_error
+using FlagSets: overflow_error, not_unique_error
 
 macro macrocall(ex)
     @assert Meta.isexpr(ex, :macrocall)

@@ -113,12 +113,6 @@ The following constructors are created:
     - `T(; kwargs...)`: each `key_i` can be given as a keyword with boolean value
     (`key_i = true` includes `flag_i`, `key_i = false` excludes it).
 
-The macroexpansion tries to infer key names from the expression or value of each flag.
-This is guaranteed to work for `Symbol` flags, and flags that use a `const` variable.
-
-If all flags are `Symbol`s, the simpler macro [`@symbol_flagset`](@ref) can be used.
-Flags can also be specified inside a `begin` block.
-
 # Examples
 ```julia
 julia> @flagset RoundingFlags begin
@@ -164,6 +158,17 @@ RoundingFlags with 4 elements:
 
 julia> typemin(RoundingFlags)
 RoundingFlags([])
+```
+
+If some `flag_i` is a `Symbol` and `key_i` is not explicitly given, `key_i` is set to
+`flag_i`. Therefore, both macros below are equivalent:
+```
+@flagset FontFlags :bold :italic 8 --> :large
+@flagset FontFlags begin
+    bold = :bold
+    italic = :italic
+    large = 8 --> :large
+end
 ```
 
 The following syntaxes can be used to provide `FlagType` and/or `BaseType`:
@@ -231,8 +236,9 @@ function undef_var_error_hint(ex)
 end
 
 function deprecated_syntax_message(typename, BaseType)
-    ArgumentError("Deprecated syntax for macro @flagset. Use @symbol_flagset or use the syntax: " *
-    "@flagset $typename {Symbol,$BaseType)} [bit_1 -->] :flag_1 [bit_2 -->] :flag_2 ..."
+    ArgumentError(
+        "Deprecated syntax for macro @flagset. Use @symbol_flagset or use the syntax: " *
+        "@flagset $typename {Symbol,$BaseType)} [bit_1 -->] :flag_1 [bit_2 -->] :flag_2 ..."
     )
 end
 
@@ -244,19 +250,31 @@ function invalid_flagspec_error(typename, flagspec)
     ArgumentError("invalid flag argument for FlagSet $typename: $flagspec")
 end
 
+function overflow_error(typename, flagspec)
+    ArgumentError("overflow in bit of flag $flagspec for FlagSet $typename")
+end
+
+function not_unique_error(field::Symbol, typename, value)
+    ArgumentError("$field for FlagSet $typename is not unique: $value")
+end
+
+function invalid_type_error(kind::Symbol, typename, type)
+    ArgumentError("invalid $kind type for FlagSet $typename: $type")
+end
+
+function check_flag_type(typename, FlagType)
+    (isnothing(FlagType) || FlagType isa Type) ||
+        throw(invalid_type_error(:flag, typename, FlagType))
+end
+
+function check_base_type(typename, BaseType)
+    (isnothing(BaseType) || BaseType isa Type && BaseType <: Integer) ||
+        throw(invalid_type_error(:base, typename, BaseType))
+end
+
 ## Helper functions
 
-function check_base_type(BaseType, typename)
-    msg = "invalid base type for FlagSet $typename: $BaseType; should be an integer type"
-    (isnothing(BaseType) || BaseType isa Type && BaseType <: Integer) || throw(ArgumentError(msg))
-end
-
-function check_flag_type(FlagType, typename)
-    msg = "invalid flag type for FlagSet $typename: $FlagType"
-    (isnothing(FlagType) || FlagType isa Type) || throw(ArgumentError(msg))
-end
-
-function infer_type(expr, __module__)
+function _to_nothing(expr, __module__)
     expr == :_ ? nothing : Core.eval(__module__, expr)
 end
 
@@ -267,8 +285,8 @@ function parse_flag_set_type(typespec, of_type, symflags::Bool, __module__)
     if !isnothing(of_type)
         if typespec isa Symbol && 0 ≤ length(of_type.args) ≤ 2
             typename = typespec
-            length(of_type.args) ≥ 1 && (FlagType = infer_type(of_type.args[1], __module__))
-            length(of_type.args) ≥ 2 && (BaseType = infer_type(of_type.args[2], __module__))
+            length(of_type.args) ≥ 1 && (FlagType = _to_nothing(of_type.args[1], __module__))
+            length(of_type.args) ≥ 2 && (BaseType = _to_nothing(of_type.args[2], __module__))
             # else typename = nothing # indicate error
         end
     elseif (
@@ -288,8 +306,8 @@ function parse_flag_set_type(typespec, of_type, symflags::Bool, __module__)
     if isnothing(typename)
         throw(ArgumentError("invalid type expression for FlagSet: $typespec"))
     end
-    check_flag_type(FlagType, typename)
-    check_base_type(BaseType, typename)
+    check_flag_type(typename, FlagType)
+    check_base_type(typename, BaseType)
     (typename, FlagType, BaseType, symflags)
 end
 
@@ -320,8 +338,7 @@ function parse_flag_spec(typename, FlagType, flagspec, symflags::Bool, __module_
         flag, bit = FlagType == Symbol && !(val isa Symbol) ? (key, val) : (val, nothing)
     end
     if isnothing(key)
-        # Try to infer key from flag
-        key = flag isa Symbol ? flag : flag_expr isa Symbol ? flag_expr : nothing
+        key = flag isa Symbol ? flag : nothing
     end
     if isnothing(flag_value) || !(key isa Union{Symbol,Nothing})
         throw(invalid_flagspec_error(typename, flagspec))
@@ -336,25 +353,30 @@ function parse_flag_specs(typename, FlagType, BaseType, flagspecs, symflags::Boo
     if length(flagspecs) == 1 && flagspecs[1] isa Expr && flagspecs[1].head === :block
         flagspecs = flagspecs[1].args
     end
+    flagspecs = filter(fs -> !(fs isa LineNumberNode), flagspecs)
     result = Any[]
     bit = one(BaseType)
     mask = zero(BaseType)
     flags = Set([])
+    keys = Set([])
     for flagspec in flagspecs
-        flagspec isa LineNumberNode && continue
         (key, flag, next_bit) = parse_flag_spec(typename, FlagType, flagspec, symflags, __module__)
         bit::BaseType = something(next_bit, bit)
         if bit <= zero(BaseType)
-            throw(ArgumentError("overflow in bit \"$flagspec\" of FlagSet $typename"))
+            throw(overflow_error(typename, flagspec))
         end
         flag::FlagType = flag
         if (bit & mask) != 0
-            throw(ArgumentError("bits for FlagSet $typename are not unique"))
+            throw(not_unique_error(:bit, typename, bit))
         end
         if flag in flags
-            throw(ArgumentError("flag \"$flag\" in FlagSet $typename is not unique"))
+            throw(not_unique_error(:flag, typename, flag))
+        end
+        if key in keys
+            throw(not_unique_error(:key, typename, key))
         end
         push!(flags, flag)
+        isnothing(key) || push!(keys, key)
         mask |= bit
         index = trailing_zeros(bit) + 1
         push!(result, (key, flag, bit, index))
@@ -429,7 +451,7 @@ function expand_flagset(typespec, flagspecs, symflags::Bool, __module__)
                 end
             end)
         function $(esc(typename))(; $((Expr(:kw, :($key::Bool), false) for (key, _) ∈ keys_flags)...))
-            xi::$BaseType = zero($BaseType)
+            xi::$BaseType = $zero($BaseType)
             $((:($key && (xi |= $(flag_bit_map[flag]))) for (key, flag) ∈ keys_flags)...)
             $(esc(typename))(xi)
         end
@@ -449,6 +471,7 @@ function expand_flagset(typespec, flagspecs, symflags::Bool, __module__)
         FlagSets.all_flags(::Type{$(esc(typename))}) = $(esc(all_flags))
         FlagSets.flags(::Type{$(esc(typename))}) = $(esc(flags))
         FlagSets.flag_bit_map(::Type{$(esc(typename))}) = $(esc(flag_bit_map))
+        FlagSets.flag_keys(::Type{$(esc(typename))}) = $(esc(keys))
         Base.typemin(x::Type{$(esc(typename))}) = $(esc(typename))($(zero(BaseType)))
         Base.typemax(x::Type{$(esc(typename))}) = $(esc(typename))($mask)
     end

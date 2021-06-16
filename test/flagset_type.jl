@@ -17,7 +17,6 @@
     @test !iszero(TFlag1([RoundUp, RoundNearest]))
     @test iszero(TFlag1())
     @test eltype(TFlag1) == RoundingMode
-    @test TFlag1(RoundDown = true) == TFlag1([RoundDown])
 
     # Block definition
     @flagset TFlag2 begin
@@ -59,7 +58,7 @@
     @test isempty(typemin(TFlag4))
     @test Int(typemax(TFlag4)) == 86
     @test length(typemax(TFlag4)) == 4
-    @test TFlag4(foo = false, Baz = true, quux = true) == TFlag4([Quux, Baz])
+    @test TFlag4(foo = false, quux = true) == TFlag4([Quux])
     @test flags(TFlag4) == (Foo, Bar, Baz, Quux)
     @test eltype(TFlag4) == MyFlagType
 end
@@ -164,26 +163,25 @@ end # testset
 end
 
 @testset "Error conditions" begin
-
     @test_throws(
         ArgumentError("no arguments given for FlagSet Foo"),
         @macrocall(@flagset Foo),
     )
     @test_throws(
-        ArgumentError("invalid base type for FlagSet Foo: Float64; should be an integer type"),
+        invalid_type_error(:base, :Foo, :Float64),
         @macrocall(@flagset Foo {_, Float64} x = 1.0),
     )
     @test_throws(
-        ArgumentError("invalid flag type for FlagSet Foo: 1234"),
+        invalid_type_error(:flag, :Foo, 1234),
         @macrocall(@flagset Foo {1234} x = 1.0),
     )
     # Require uniqueness
     @test_throws(
-        ArgumentError("bits for FlagSet Foo are not unique"),
+        not_unique_error(:bit, :Foo, 1),
         @macrocall(@flagset Foo x = 1 --> :x y = 1 --> :y),
     )
     @test_throws(
-        ArgumentError("bits for FlagSet Foo are not unique"),
+        not_unique_error(:bit, :Foo, 2),
         @macrocall(@flagset Foo x = 2 --> :x y = 2 --> :y),
     )
     # Explicit bits must be powers of two
@@ -211,8 +209,8 @@ end
     )
     # Disallow bit overflow
     @test_throws(
-        ArgumentError("overflow in bit \"y = nothing\" of FlagSet Foo"),
-        @macrocall(@flagset Foo {nothing, UInt32} x = UInt32(1) << 31 --> missing y = nothing)
+        overflow_error(:Foo, :(y = nothing)),
+        @macrocall(@flagset Foo {nothing, UInt32} x = UInt32(1) << 31 --> missing y = nothing),
     )
 end # testset
 

@@ -118,13 +118,12 @@ end # testset
 end
 
 @testset "Error conditions" begin
-
     @test_throws(
         ArgumentError("no arguments given for FlagSet Foo"),
         @macrocall(@symbol_flagset Foo),
     )
     @test_throws(
-        ArgumentError("invalid base type for FlagSet Foo: Float64; should be an integer type"),
+        invalid_type_error(:base, :Foo, :Float64),
         @macrocall(@symbol_flagset Foo::Float64 x = 1.0),
     )
     @test_throws(
@@ -137,11 +136,11 @@ end
     )
     # Require uniqueness
     @test_throws(
-        ArgumentError("bits for FlagSet Foo are not unique"),
+        not_unique_error(:bit, :Foo, 1),
         @macrocall(@symbol_flagset Foo x = 1 y = 1),
     )
     @test_throws(
-        ArgumentError("bits for FlagSet Foo are not unique"),
+        not_unique_error(:bit, :Foo, 2),
         @macrocall(@symbol_flagset Foo x = 2 y = 2),
     )
     # Explicit bits must be powers of two
@@ -173,7 +172,7 @@ end
     )
     # Disallow bit overflow
     @test_throws(
-        ArgumentError("overflow in bit \"y\" of FlagSet Foo"),
+        overflow_error(:Foo, :y),
         @macrocall(@symbol_flagset Foo::UInt32 x = (UInt32(1) << 31) y),
     )
     # Deprecated messages
@@ -221,15 +220,15 @@ end
     @test string(SubModule.Bits(:one)) == "Main.SubModule.Bits([:one])"
     @test repr("text/plain", FilePerms) ==
           "FlagSet $(string(FilePerms)):\n" *
-          " 0x01 --> :EXEC\n" *
-          " 0x02 --> :WRITE\n" *
-          " 0x04 --> :READ"
+          " EXEC  = 0x01 --> :EXEC\n" *
+          " WRITE = 0x02 --> :WRITE\n" *
+          " READ  = 0x04 --> :READ"
     @test repr("text/plain", SubModule.Bits) ==
           "FlagSet Main.SubModule.Bits:\n" *
-          " 0x01 --> :one\n" *
-          " 0x02 --> :two\n" *
-          " 0x04 --> :four\n" *
-          " 0x08 --> :eight"
+          " one   = 0x01 --> :one\n" *
+          " two   = 0x02 --> :two\n" *
+          " four  = 0x04 --> :four\n" *
+          " eight = 0x08 --> :eight"
     @test repr(FilePerms(:EXEC)) == "FilePerms([:EXEC])"
     @test repr(SubModule.Bits(:one)) == "Main.SubModule.Bits([:one])"
     @test repr(FilePerms(:EXEC, :READ)) == "FilePerms([:EXEC, :READ])"
