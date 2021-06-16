@@ -14,10 +14,21 @@ macro macrocall(ex)
     return esc(ex)
 end
 
-@testset "FlagSets of symbols" verbose=true begin
-    include("symbol_flagsets.jl")
+if VERSION >= v"1.6"
+    @testset "FlagSets of symbols" verbose=true begin
+        include("symbol_flagsets.jl")
+    end
+
+    @testset "FlagSets of other types" verbose=true begin
+        include("flagset_type.jl")
+    end
+else
+    @testset "FlagSets of symbols" begin
+        include("symbol_flagsets.jl")
+    end
+
+    @testset "FlagSets of other types" begin
+        include("flagset_type.jl")
+    end
 end
 
-@testset "FlagSets of other types" verbose=true begin
-    include("flagset_type.jl")
-end
