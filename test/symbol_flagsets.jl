@@ -125,6 +125,16 @@ end
         @macrocall(@symbol_flagset Foo::Float64 x = 1.0)
     )
 
+    @test_throws(
+        ArgumentError("invalid type expression for FlagSet: 1234 + 1"),
+        @macrocall(@symbol_flagset 1234 + 1 x = 1 y = 2)
+    )
+
+    @test_throws(
+        ArgumentError("invalid type expression for FlagSet: 1234::UInt"),
+        @macrocall(@symbol_flagset 1234::UInt x = 1 y = 2)
+    )
+
     # Require uniqueness
     @test_throws(
         ArgumentError("bits for FlagSet Foo are not unique"),

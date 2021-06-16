@@ -17,6 +17,7 @@
     @test !iszero(TFlag1([RoundUp, RoundNearest]))
     @test iszero(TFlag1())
     @test eltype(TFlag1) == RoundingMode
+    @test TFlag1(RoundDown = true) == TFlag1([RoundDown])
 
     # Block definition
     @flagset TFlag2 begin
@@ -58,7 +59,7 @@
     @test isempty(typemin(TFlag4))
     @test Int(typemax(TFlag4)) == 86
     @test length(typemax(TFlag4)) == 4
-    @test TFlag4(foo = false, quux = true) == TFlag4([Quux])
+    @test TFlag4(foo = false, Baz = true, quux = true) == TFlag4([Quux, Baz])
     @test flags(TFlag4) == (Foo, Bar, Baz, Quux)
     @test eltype(TFlag4) == MyFlagType
 end
@@ -91,9 +92,10 @@ end
 end # testset
 
 @testset "Type properties" begin
-    # Default integer typing
+    # Default integer typing and compatibility with @symbol_flagset
     @flagset TFlag5 :flag5a :flag5b
     @test eltype(TFlag5) == Symbol
+    @test TFlag5(flag5a = true) == TFlag5(:flag5a)
     @test typeof(Integer(TFlag5(:flag5a))) == UInt32
     @test typeof(TFlag5) == DataType
     @test typeof(TFlag5(:flag5a)) <: TFlag5 <: FlagSet <: AbstractSet

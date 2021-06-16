@@ -294,10 +294,16 @@ function parse_flag_spec(typename, FlagType, flagspec, symflags::Bool, __module_
     end
     if (isa(flag_value, Expr) && (flag_value.head === :-->) && length(flag_value.args) == 2)
         bit = Core.eval(__module__, flag_value.args[1]) # allow consts and exprs, e.g. uint128"1"
-        flag = Core.eval(__module__, flag_value.args[2])
+        flag_expr = flag_value.args[2]
+        flag = Core.eval(__module__, flag_expr)
     else
+        flag_expr = flag_value
         val = Core.eval(__module__, flag_value)
         flag, bit = FlagType == Symbol && !(val isa Symbol) ? (key, val) : (val, nothing)
+    end
+    if isnothing(key)
+        # Try to infer key from flag
+        key = flag isa Symbol ? flag : flag_expr isa Symbol ? flag_expr : nothing
     end
     if isnothing(flag_value) || !(key isa Union{Symbol,Nothing})
         throw(ArgumentError("invalid argument for FlagSet $typename: $flagspec"))
