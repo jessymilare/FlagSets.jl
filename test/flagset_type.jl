@@ -186,7 +186,8 @@ end
     # Explicit bits must be powers of two
     @test_throws(
         ArgumentError(
-            "invalid bit for FlagSet Foo: _three = 3 --> nothing; " * "should be an integer positive power of 2",
+            "invalid bit for FlagSet Foo: $(:(_three = 3 --> nothing)); " *
+            "should be an integer positive power of 2",
         ),
         @macrocall(@flagset Foo _three = 3 --> nothing)
     )
@@ -194,21 +195,21 @@ end
     # Values must be integers
     @test_throws(
         ArgumentError(
-            "invalid bit for FlagSet Foo: _zero = \"zero\" --> nothing; " *
+            "invalid bit for FlagSet Foo: $(:(_zero = "zero" --> nothing)); " *
             "should be an integer positive power of 2",
         ),
         @macrocall(@flagset Foo _zero = "zero" --> nothing)
     )
     @test_throws(
         ArgumentError(
-            "invalid bit for FlagSet Foo: '0' --> nothing; " *
+            "invalid bit for FlagSet Foo: $(:('0' --> nothing)); " *
             "should be an integer positive power of 2",
         ),
         @macrocall(@flagset Foo '0' --> nothing)
     )
     @test_throws(
         ArgumentError(
-            "invalid bit for FlagSet Foo: 0.5 --> nothing; " *
+            "invalid bit for FlagSet Foo: $(:(0.5 --> nothing)); " *
             "should be an integer positive power of 2",
         ),
         @macrocall(@flagset Foo 0.5 --> nothing)
