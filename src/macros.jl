@@ -304,7 +304,7 @@ function parse_flag_spec(typename, FlagType, flagspec, symflags::Bool, __module_
     if !isnothing(bit)
         if !(bit isa Real && bit >= 1 && ispow2(bit))
             msg =
-                "invalid bit for FlagSet $typename: $flagspec; " *
+                "invalid bit for FlagSet $typename: $(string(flagspec)); " *
                 "should be an integer positive power of 2"
             throw(ArgumentError(msg))
         end
