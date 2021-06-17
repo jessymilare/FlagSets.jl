@@ -420,12 +420,12 @@ function expand_flagset(typespec, flagspecs, symflags::Bool, __module__)
     flag_vector = Vector{Union{FlagType,Nothing}}(undef, len)
     fill!(flag_vector, nothing) # Avoid undefined reference errors
     indices = BaseType[]
-    flag_bit_map = Dict{FlagType,BaseType}()
+    flag_bit_map = Base.ImmutableDict{FlagType,BaseType}()
 
     for (key, flag, bit, index) ∈ parsed
         key_vector[index] = key
         flag_vector[index] = flag
-        flag_bit_map[flag] = bit
+        flag_bit_map = Base.ImmutableDict(flag_bit_map, flag => bit)
         push!(indices, index)
     end
 

@@ -154,9 +154,10 @@ Base.@pure function get_flag_bit(::Type{T}, flag, default) where {T<:FlagSet}
 end
 
 Base.@pure function get_flag_bit(::Type{T}, flag) where {T<:FlagSet}
-    get(flag_bit_map(T), flag) do
-        flagset_argument_error(T, flag)
-    end
+    not_found = typemax(basetype(T))
+    val = get(flag_bit_map(T), flag, not_found)
+    val == not_found && flagset_argument_error(T, flag)
+    val
 end
 
 # Default constructors
