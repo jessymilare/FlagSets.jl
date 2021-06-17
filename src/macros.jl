@@ -230,15 +230,16 @@ end
 
 function undef_var_error_hint(ex)
     ErrorException(
-        "An $ex has been caught during macroexpansion of @flagset. If you want to use " *
-        "the old syntax (before version 0.3), use @symbol_flagset instead."
+        "An $ex has been caught during macroexpansion of @flagset. If you are using " *
+        "the old syntax (before version 0.3), use @symbol_flagset or the following syntax:" *
+        "\n @flagset T [bit_1 -->] :flag_1 [bit_2 -->] :flag_2 ..."
     )
 end
 
 function deprecated_syntax_message(typename, BaseType)
     ArgumentError(
-        "Deprecated syntax for macro @flagset. Use @symbol_flagset or use the syntax: " *
-        "@flagset $typename {Symbol,$BaseType)} [bit_1 -->] :flag_1 [bit_2 -->] :flag_2 ..."
+        "Deprecated syntax for macro @flagset. Use @symbol_flagset or use the syntax:" *
+        "\n @flagset $typename {Symbol,$BaseType)} [bit_1 -->] :flag_1 [bit_2 -->] :flag_2 ..."
     )
 end
 
@@ -338,7 +339,7 @@ function parse_flag_spec(typename, FlagType, flagspec, symflags::Bool, __module_
         flag, bit = FlagType == Symbol && !(val isa Symbol) ? (key, val) : (val, nothing)
     end
     if isnothing(key)
-        key = flag isa Symbol ? flag : nothing
+        key = flag isa Symbol && Base.isidentifier(flag) && flag != :missing ? flag : nothing
     end
     if isnothing(flag_value) || !(key isa Union{Symbol,Nothing})
         throw(invalid_flagspec_error(typename, flagspec))
@@ -362,19 +363,11 @@ function parse_flag_specs(typename, FlagType, BaseType, flagspecs, symflags::Boo
     for flagspec in flagspecs
         (key, flag, next_bit) = parse_flag_spec(typename, FlagType, flagspec, symflags, __module__)
         bit::BaseType = something(next_bit, bit)
-        if bit <= zero(BaseType)
-            throw(overflow_error(typename, flagspec))
-        end
+        bit <= zero(BaseType) && throw(overflow_error(typename, flagspec))
         flag::FlagType = flag
-        if (bit & mask) != 0
-            throw(not_unique_error(:bit, typename, bit))
-        end
-        if flag in flags
-            throw(not_unique_error(:flag, typename, flag))
-        end
-        if key in keys
-            throw(not_unique_error(:key, typename, key))
-        end
+        (bit & mask) != 0 && throw(not_unique_error(:bit, typename, bit))
+        flag in flags && throw(not_unique_error(:flag, typename, flag))
+        key in keys && throw(not_unique_error(:key, typename, key))
         push!(flags, flag)
         isnothing(key) || push!(keys, key)
         mask |= bit
@@ -436,42 +429,45 @@ function expand_flagset(typespec, flagspecs, symflags::Bool, __module__)
         push!(indices, index)
     end
 
-    all_flags = Tuple(flag_vector)
+    flagset_flags = Tuple(flag_vector)
     flags = Tuple(flag_vector[idx] for idx in indices)
     keys = Tuple(key_vector[idx] for idx in indices)
     keys_flags = ((key, flag) for (key, flag) ∈ zip(keys, flags) if !isnothing(key))
+
+    @show flags keys (keys_flags...,)
 
     blk = quote
         # flagset definition
         Base.@__doc__(struct $(esc(typename)) <: FlagSet{$FlagType,$BaseType}
                 bitflags::$BaseType
-                function $(esc(typename))(x::Integer)
-                    x & $(mask) == x || flagset_argument_error($(Expr(:quote, typename)), x)
-                    return new(convert($BaseType, x))
+                function $(esc(typename))(bitmask::Integer)
+                    bitmask & $(mask) == bitmask || flagset_argument_error($(esc(typename)), bitmask)
+                    return new(convert($BaseType, bitmask))
                 end
             end)
         function $(esc(typename))(; $((Expr(:kw, :($key::Bool), false) for (key, _) ∈ keys_flags)...))
-            xi::$BaseType = $zero($BaseType)
-            $((:($key && (xi |= $(flag_bit_map[flag]))) for (key, flag) ∈ keys_flags)...)
-            $(esc(typename))(xi)
+            bitmask::$BaseType = zero($BaseType)
+            $((:($key && (bitmask |= $(flag_bit_map[flag]))) for (key, flag) ∈ keys_flags)...)
+            $(esc(typename))(bitmask)
         end
         # Only create raw_constructor for symbols
-        $(FlagType == Symbol && :(function $(esc(typename))(flag::$FlagType, flags::$FlagType...)
-                $(esc(typename))((flag, flags...))
-            end))
-        function $(esc(typename))(itr::T) where {T}
-            Base.isiterable(T) || flagset_argument_error($(Expr(:quote, typename)), itr)
-            xi = zero($BaseType)
-            for flag ∈ itr
-                xi |= FlagSets.getflag($(esc(typename)), flag)
-            end
-            $(esc(typename))(xi)
-        end
+        # $(FlagType == Symbol && :(function $(esc(typename))(flag::$FlagType, flags::$FlagType...)
+        #         $(esc(typename))((flag, flags...))
+        #     end))
+        # function $(esc(typename))(itr::T) where {T}
+        #     Base.isiterable(T) || flagset_argument_error($(Expr(:quote, typename)), itr)
+        #     bitmask = zero($BaseType)
+        #     for flag ∈ itr
+        #         bitmask |= FlagSets.get_flag_bit($(esc(typename)), flag)
+        #     end
+        #     $(esc(typename))(bitmask)
+        # end
 
-        FlagSets.all_flags(::Type{$(esc(typename))}) = $(esc(all_flags))
+        FlagSets.flagset_flags(::Type{$(esc(typename))}) = $(esc(flagset_flags))
         FlagSets.flags(::Type{$(esc(typename))}) = $(esc(flags))
         FlagSets.flag_bit_map(::Type{$(esc(typename))}) = $(esc(flag_bit_map))
-        FlagSets.flag_keys(::Type{$(esc(typename))}) = $(esc(keys))
+        FlagSets.flagkeys(::Type{$(esc(typename))}) =
+            $(keys === flags ? :(FlagSets.flags($(esc(typename)))) : esc(keys))
         Base.typemin(x::Type{$(esc(typename))}) = $(esc(typename))($(zero(BaseType)))
         Base.typemax(x::Type{$(esc(typename))}) = $(esc(typename))($mask)
     end

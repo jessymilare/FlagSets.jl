@@ -1,10 +1,10 @@
 # This file is part of FlagSets.jl project, which is licensed under BDS-3-Clause.
 # See file LICENSE.md for more information.
 
-function all_flags end
-function flags end
+function flagset_flags end
 function flag_bit_map end
-function flag_keys end
+function flags end
+function flagkeys end
 
 basetype(::Type{<:FlagSet{F,B}}) where {F,B<:Integer} = B
 
@@ -34,13 +34,12 @@ Base.iszero(x::FlagSet) = isempty(x)
 # Iterator interface
 function Base.iterate(x::T) where {T<:FlagSet}
     xi = x.bitflags
-    isvalid(x) || ArgumentError("FlagSet $T with invalid code: $xi")
     iterate(x, xi)
 end
 
 function Base.iterate(x::T, xi::Integer) where {T<:FlagSet}
     iszero(xi) && (return nothing)
-    fs = all_flags(T)
+    fs = flagset_flags(T)
     nbit = trailing_zeros(xi)
     xi ⊻= 1 << nbit
     return (fs[nbit+1], xi)
@@ -48,9 +47,8 @@ end
 
 function Base.first(x::T) where {T<:FlagSet}
     xi = x.bitflags
-    isvalid(x) || ArgumentError("FlagSet $T with invalid code: $xi")
     iszero(xi) && throw(ArgumentError("collection must be non-empty"))
-    fs = all_flags(T)
+    fs = flagset_flags(T)
     nbit = trailing_zeros(xi)
     fs[nbit+1]
 end
@@ -93,7 +91,7 @@ Base.union(x::T, y::T) where {T<:FlagSet} = T(x.bitflags | y.bitflags)
 Base.intersect(x::T, y::T) where {T<:FlagSet} = T(x.bitflags & y.bitflags)
 Base.setdiff(x::T, y::T) where {T<:FlagSet} = T(x.bitflags & ~y.bitflags)
 Base.issubset(x::T, y::T) where {T<:FlagSet} = (x.bitflags & y.bitflags) == x.bitflags
-Base.in(elt, x::T) where {T<:FlagSet} = !iszero(getflag(T, elt, 0) & x.bitflags)
+Base.in(elt, x::T) where {T<:FlagSet} = !iszero(get_flag_bit(T, elt, zero(basetype(T))) & x.bitflags)
 Base.:⊊(x::T, y::T) where {T<:FlagSet} = x != y && (x.bitflags & y.bitflags) == x.bitflags
 
 Base.empty(s::FlagSet{B,F}, ::Type{F}) where {B,F} = typeof(s)()
@@ -133,13 +131,13 @@ function Base.show(io::IO, mime::MIME"text/plain", type::Type{<:FlagSet})
         print(io, "FlagSet ")
         Base.show_datatype(io, type)
         print(io, ":")
-        keys = map(key -> isnothing(key) ? "" : String(key), flag_keys(type))
+        keys = map(key -> isnothing(key) ? "" : String(key), flagkeys(type))
         if !all(isempty, keys)
             klen = maximum(length, keys)
             keys = map(k -> isempty(k) ? ' '^(klen+2) : k * ' '^(klen-length(k)) * " = ", keys)
         end
         for (flag, key) ∈ zip(flags(type), keys)
-            bit = getflag(type, flag)
+            bit = get_flag_bit(type, flag)
             print(io, "\n ", key, repr(bit), " --> ", repr(flag))
         end
     else
@@ -151,12 +149,27 @@ function flagset_argument_error(typename, x)
     throw(ArgumentError(string("invalid value for FlagSet $(typename): ", repr(x))))
 end
 
-Base.@pure function getflag(::Type{T}, flag, default::Integer) where {T<:FlagSet}
-    get(flag_bit_map(T), flag, basetype(T)(default))
+Base.@pure function get_flag_bit(::Type{T}, flag, default) where {T<:FlagSet}
+    get(flag_bit_map(T), flag, default)
 end
 
-Base.@pure function getflag(::Type{T}, flag) where {T<:FlagSet}
+Base.@pure function get_flag_bit(::Type{T}, flag) where {T<:FlagSet}
     get(flag_bit_map(T), flag) do
         flagset_argument_error(T, flag)
     end
+end
+
+# Default constructors
+
+function (::Type{T})(flag::Symbol, flags::Symbol...) where {T<:FlagSet{Symbol}}
+    T((flag, flags...))
+end
+
+function (::Type{T})(itr) where {T<:FlagSet}
+    Base.isiterable(typeof(itr)) || flagset_argument_error(T, itr)
+    bitmask::basetype(T) = 0
+    for flag ∈ itr
+        bitmask |= get_flag_bit(T, flag)
+    end
+    T(bitmask)
 end
