@@ -123,7 +123,7 @@ function Base.show(io::IO, mime::MIME"text/plain", x::FlagSet)
     if get(io, :compact, false)
         show(io, x)
     else
-        invoke(show, Tuple{IO, typeof(mime), AbstractSet}, io, mime,  x)
+        invoke(show, Tuple{typeof(io),typeof(mime),AbstractSet}, io, mime,  x)
     end
 end
 
@@ -143,7 +143,7 @@ function Base.show(io::IO, mime::MIME"text/plain", type::Type{<:FlagSet})
             print(io, "\n ", key, repr(bit), " --> ", repr(flag))
         end
     else
-        invoke(show, Tuple{IO,typeof(mime),Type}, io, mime, type)
+        invoke(show, Tuple{typeof(io),typeof(mime),Type}, io, mime, type)
     end
 end
 
