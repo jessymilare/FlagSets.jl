@@ -17,6 +17,9 @@ The following constructors are provided:
     - `T(; kwargs...)`: each `flag_i` can be supplied as a boolean value
     (`flag_i = true` includes `:flag_i`, `flag_i = false` excludes it).
 
+It should be safe to new constructor methods and/or overriding the methods provided
+(except the default using an internal struct, i.e., `T(::FlagSets.BitMask)`).
+
 To construct sets of non-`Symbol` constants, use the macro [`@flagset`](@ref).
 
 # Examples
@@ -105,13 +108,16 @@ Create a [`FlagSet`](@ref) subtype with name `T` and the flags supplied (evaluat
 Each instance of the created type represents a subset of `{flag_1, flag_2, ...}`.
 The associated `bit_1`,`bit_2`, etc, if provided, must be distinct positive powers of 2.
 
-The following constructors are created:
+The following constructors are provided:
     - `T(itr)`: construct a set of the flags from the given iterable object. Each flag
     must be one of `flag_1`, `flag_2`, etc;
     - `T()`: construct an empty set;
     - `T(bitmask::Integer)`: construct a set of flags associated with each bit in `mask`;
     - `T(; kwargs...)`: each `key_i` can be given as a keyword with boolean value
     (`key_i = true` includes `flag_i`, `key_i = false` excludes it).
+
+It should be safe to new constructor methods and/or overriding the methods provided
+(except the default which is defined for the internal struct `FlagSets.BitMask`).
 
 # Examples
 ```julia
@@ -423,6 +429,9 @@ function expand_flagset(typespec, flagspecs, symflags::Bool, __module__)
     flag_bit_map = Base.ImmutableDict{FlagType,BaseType}()
 
     for (key, flag, bit, index) ∈ parsed
+        key::Union{Symbol,Nothing} = key
+        flag::FlagType = flag
+        bit::BaseType = bit
         key_vector[index] = key
         flag_vector[index] = flag
         flag_bit_map = Base.ImmutableDict(flag_bit_map, flag => bit)
@@ -438,7 +447,8 @@ function expand_flagset(typespec, flagspecs, symflags::Bool, __module__)
         # flagset definition
         Base.@__doc__(struct $(esc(typename)) <: FlagSet{$FlagType,$BaseType}
                 bitflags::$BaseType
-                function $(esc(typename))(bitmask::Integer)
+                function $(esc(typename))(bitmask::FlagSets.BitMask)
+                    bitmask = bitmask.bitmask
                     bitmask & $(mask) == bitmask || flagset_argument_error($(esc(typename)), bitmask)
                     return new(convert($BaseType, bitmask))
                 end
@@ -446,28 +456,16 @@ function expand_flagset(typespec, flagspecs, symflags::Bool, __module__)
         function $(esc(typename))(; $((Expr(:kw, :($key::Bool), false) for (key, _) ∈ keys_flags)...))
             bitmask::$BaseType = zero($BaseType)
             $((:($key && (bitmask |= $(flag_bit_map[flag]))) for (key, flag) ∈ keys_flags)...)
-            $(esc(typename))(bitmask)
+            $(esc(typename))(FlagSets.BitMask(bitmask))
         end
-        # Only create raw_constructor for symbols
-        # $(FlagType == Symbol && :(function $(esc(typename))(flag::$FlagType, flags::$FlagType...)
-        #         $(esc(typename))((flag, flags...))
-        #     end))
-        # function $(esc(typename))(itr::T) where {T}
-        #     Base.isiterable(T) || flagset_argument_error($(Expr(:quote, typename)), itr)
-        #     bitmask = zero($BaseType)
-        #     for flag ∈ itr
-        #         bitmask |= FlagSets.get_flag_bit($(esc(typename)), flag)
-        #     end
-        #     $(esc(typename))(bitmask)
-        # end
 
         FlagSets.flagset_flags(::Type{$(esc(typename))}) = $(esc(flagset_flags))
         FlagSets.flags(::Type{$(esc(typename))}) = $(esc(flags))
         FlagSets.flag_bit_map(::Type{$(esc(typename))}) = $(esc(flag_bit_map))
         FlagSets.flagkeys(::Type{$(esc(typename))}) =
             $(keys === flags ? :(FlagSets.flags($(esc(typename)))) : esc(keys))
-        Base.typemin(x::Type{$(esc(typename))}) = $(esc(typename))($(zero(BaseType)))
-        Base.typemax(x::Type{$(esc(typename))}) = $(esc(typename))($mask)
+        Base.typemin(x::Type{$(esc(typename))}) = $(esc(typename))(FlagSets.BitMask($(zero(BaseType))))
+        Base.typemax(x::Type{$(esc(typename))}) = $(esc(typename))(FlagSets.BitMask($mask))
     end
     push!(blk.args, :nothing)
     blk.head = :toplevel

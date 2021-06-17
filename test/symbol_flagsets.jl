@@ -67,9 +67,16 @@ end
     @test !(Flag1(:flag1a, :flag1b) ⊊ Flag1(:flag1b, :flag1c))
 end # testset
 
+# Julia errors when defining methods whithin nested testsets
+@symbol_flagset Flag5 flag5a flag5b
+@symbol_flagset Flag6::UInt8 flag6a flag6b flag6c
+@symbol_flagset Flag7::UInt8 flag7a = big"1" flag7b = UInt8(2)
+Flag5(::Integer) = typemax(Flag5)
+Flag6(::Integer) = typemax(Flag6)
+Flag7(::Integer) = typemax(Flag7)
+
 @testset "Type properties" begin
     # Default integer typing
-    @symbol_flagset Flag5 flag5a flag5b
     @test typeof(Integer(Flag5(:flag5a))) == UInt32
     @test typeof(Flag5) == DataType
     @test typeof(Flag5(:flag5a)) <: Flag5 <: FlagSet <: AbstractSet
@@ -77,30 +84,38 @@ end # testset
     @test isbits(Flag5(:flag5a))
 
     # Construct non-default
-    @symbol_flagset Flag6::UInt8 flag6a flag6b flag6c
     @test typeof(Integer(Flag6(:flag6a))) == UInt8
     @test UInt8(Flag6(:flag6a)) === 0x01
     @test UInt16(Flag6(:flag6b)) === 0x0002
+    @test UInt16(Flag6(BitMask(0x02))) === 0x0002
+    @test UInt16(Flag6([:flag6a, :flag6b])) === 0x0003
     @test UInt128(Flag6(:flag6c)) === 0x00000000000000000000000000000004
 
     # Explicit bits of non-default types
-    @symbol_flagset Flag7::UInt8 flag7a = big"1" flag7b = UInt8(2)
     @test Integer(Flag7(:flag7a)) === UInt8(1)
+    @test Integer(Flag7(BitMask(1))) == UInt8(1)
     @test Integer(Flag7(:flag7b)) === UInt8(2)
+    @test Integer(Flag7(BitMask(0x0000_0002))) === UInt8(2)
+    @test Integer(Flag7([:flag7a, :flag7b])) === UInt8(3)
+    @test Flag7(BitMask(0)) == typemin(Flag7)
 end # testset
 
 @testset "Validate type" begin
     @test isvalid(Flag1(:flag1a))
+    @test isvalid(Flag1, Flag1(:flag1a))
+    @test isvalid(Flag1, :flag1a)
     @test isvalid(Flag1(:flag1b))
-    @test isvalid(Flag1(0x0000_0003))
+    @test isvalid(Flag1, :flag1b)
+    @test isvalid(Flag1, 0x0000_0003)
+    @test isvalid(Flag1, BitMask(0x0000_0003))
     @test !isvalid(Flag1, UInt32(1 << 3))
     @test !isvalid(Flag1, UInt32(1 << 4))
     @test !isvalid(Flag1, UInt32(1 << 5 | 1))
     @test !isvalid(Flag1, UInt32(1 << 29 | 1 << 3))
 
-    @test isvalid(Flag6(:flag6a))
-    @test isvalid(Flag6(:flag6b))
-    @test isvalid(Flag6(0x03))
+    @test isvalid(Flag6, :flag6a)
+    @test isvalid(Flag6, :flag6b)
+    @test isvalid(Flag6, BitMask(0x03))
     @test !isvalid(Flag6, UInt8(1 << 3))
     @test !isvalid(Flag6, UInt8(1 << 4))
     @test !isvalid(Flag6, UInt8(1 << 5 | 1))
@@ -193,10 +208,12 @@ end # testset
         write(io, Flag10(:flag10a, :flag10b))
         write(io, Flag9(:flag9b))
         write(io, Flag10(:flag10a))
+        write(io, Flag6(BitMask(2)))
         seekstart(io)
         @test read(io, Flag10) == Flag10(:flag10a, :flag10b)
         @test read(io, Flag9) == Flag9(:flag9b)
         @test read(io, Flag10) == Flag10(:flag10a)
+        @test read(io, Flag6) == Flag6(BitMask(2))
     end
     let io = IOBuffer()
         serialize(io, Flag9(:flag9a))

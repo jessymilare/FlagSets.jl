@@ -6,9 +6,19 @@ function flag_bit_map end
 function flags end
 function flagkeys end
 
+"""
+    BitMask(bitmask::Integer)
+
+Structure used internally by `FlagSets` for default constructor of subtypes of `FlagSet`.
+"""
+struct BitMask{T<:Integer}
+    bitmask::T
+end
+
 basetype(::Type{<:FlagSet{F,B}}) where {F,B<:Integer} = B
 
 Base.isvalid(::Type{T}, x::Integer) where {T<:FlagSet} = (x & basetype(T)(typemax(T)) == x)
+Base.isvalid(::Type{T}, x::BitMask) where {T<:FlagSet} = (x.bitmask & basetype(T)(typemax(T)) == x.bitmask)
 Base.isvalid(::Type{T}, x::T) where {T<:FlagSet} = true
 Base.isvalid(x::T) where {T<:FlagSet} = true
 
@@ -23,11 +33,11 @@ end
 (::Type{I})(x::FlagSet) where {I<:Integer} = I(x.bitflags)::I
 Base.cconvert(::Type{I}, x::FlagSet) where {I<:Integer} = I(x.bitflags)
 Base.write(io::IO, x::T) where {T<:FlagSet} = write(io, x.bitflags)
-Base.read(io::IO, ::Type{T}) where {T<:FlagSet} = T(read(io, basetype(T)))
+Base.read(io::IO, ::Type{T}) where {T<:FlagSet} = T(BitMask(read(io, basetype(T))))
 #Base.isless(x::FlagSet{T}, y::FlagSet{T}) where {T<:Integer} = isless(T(x), T(y))
-Base.:|(x::T, y::T) where {T<:FlagSet} = T(x.bitflags | y.bitflags)
-Base.:&(x::T, y::T) where {T<:FlagSet} = T(x.bitflags & y.bitflags)
-Base.:⊻(x::T, y::T) where {T<:FlagSet} = T(x.bitflags ⊻ y.bitflags)
+Base.:|(x::T, y::T) where {T<:FlagSet} = T(BitMask(x.bitflags | y.bitflags))
+Base.:&(x::T, y::T) where {T<:FlagSet} = T(BitMask(x.bitflags & y.bitflags))
+Base.:⊻(x::T, y::T) where {T<:FlagSet} = T(BitMask(x.bitflags ⊻ y.bitflags))
 Base.:~(x::T) where {T<:FlagSet} = setdiff(typemax(T), x)
 Base.iszero(x::FlagSet) = isempty(x)
 
@@ -87,9 +97,9 @@ julia> flags(RoundingFlags)
 flags(::Type{<:FlagSet})
 
 # Set manipulation
-Base.union(x::T, y::T) where {T<:FlagSet} = T(x.bitflags | y.bitflags)
-Base.intersect(x::T, y::T) where {T<:FlagSet} = T(x.bitflags & y.bitflags)
-Base.setdiff(x::T, y::T) where {T<:FlagSet} = T(x.bitflags & ~y.bitflags)
+Base.union(x::T, y::T) where {T<:FlagSet} = T(BitMask(x.bitflags | y.bitflags))
+Base.intersect(x::T, y::T) where {T<:FlagSet} = T(BitMask(x.bitflags & y.bitflags))
+Base.setdiff(x::T, y::T) where {T<:FlagSet} = T(BitMask(x.bitflags & ~y.bitflags))
 Base.issubset(x::T, y::T) where {T<:FlagSet} = (x.bitflags & y.bitflags) == x.bitflags
 Base.in(elt, x::T) where {T<:FlagSet} = !iszero(get_flag_bit(T, elt, zero(basetype(T))) & x.bitflags)
 Base.:⊊(x::T, y::T) where {T<:FlagSet} = x != y && (x.bitflags & y.bitflags) == x.bitflags
@@ -149,11 +159,11 @@ function flagset_argument_error(typename, x)
     throw(ArgumentError(string("invalid value for FlagSet $(typename): ", repr(x))))
 end
 
-Base.@pure function get_flag_bit(::Type{T}, flag, default) where {T<:FlagSet}
+function get_flag_bit(::Type{T}, flag, default) where {T<:FlagSet}
     get(flag_bit_map(T), flag, default)
 end
 
-Base.@pure function get_flag_bit(::Type{T}, flag) where {T<:FlagSet}
+function get_flag_bit(::Type{T}, flag) where {T<:FlagSet}
     not_found = typemax(basetype(T))
     val = get(flag_bit_map(T), flag, not_found)
     val == not_found && flagset_argument_error(T, flag)
@@ -172,5 +182,9 @@ function (::Type{T})(itr) where {T<:FlagSet}
     for flag ∈ itr
         bitmask |= get_flag_bit(T, flag)
     end
-    T(bitmask)
+    T(BitMask(bitmask))
+end
+
+function (::Type{T})(bitmask::Integer) where {T<:FlagSet}
+    T(BitMask(bitmask))
 end
