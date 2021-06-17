@@ -42,25 +42,13 @@ Base.:~(x::T) where {T<:FlagSet} = setdiff(typemax(T), x)
 Base.iszero(x::FlagSet) = isempty(x)
 
 # Iterator interface
-function Base.iterate(x::T) where {T<:FlagSet}
-    xi = x.bitflags
-    iterate(x, xi)
-end
 
-function Base.iterate(x::T, xi::Integer) where {T<:FlagSet}
+function Base.iterate(x::T, xi::Integer = x.bitflags) where {T<:FlagSet}
     iszero(xi) && (return nothing)
     fs = flagset_flags(T)
     nbit = trailing_zeros(xi)
-    xi ⊻= 1 << nbit
+    xi ⊻= typeof(xi)(1) << nbit
     return (fs[nbit+1], xi)
-end
-
-function Base.first(x::T) where {T<:FlagSet}
-    xi = x.bitflags
-    iszero(xi) && throw(ArgumentError("collection must be non-empty"))
-    fs = flagset_flags(T)
-    nbit = trailing_zeros(xi)
-    fs[nbit+1]
 end
 
 Base.length(x::FlagSet) = count_ones(x.bitflags)
@@ -164,7 +152,7 @@ function get_flag_bit(::Type{T}, flag, default) where {T<:FlagSet}
 end
 
 function get_flag_bit(::Type{T}, flag) where {T<:FlagSet}
-    not_found = typemax(basetype(T))
+    not_found = basetype(T)(0x7f)
     val = get(flag_bit_map(T), flag, not_found)
     val == not_found && flagset_argument_error(T, flag)
     val

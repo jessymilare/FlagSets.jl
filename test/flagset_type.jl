@@ -61,6 +61,18 @@
     @test TFlag4(foo = false, quux = true) == TFlag4([Quux])
     @test flags(TFlag4) == (Foo, Bar, Baz, Quux)
     @test eltype(TFlag4) == MyFlagType
+
+    # UInt128
+    @flagset TFlag4a a = UInt128(1) << 96 --> Foo b = UInt128(1) << 120 --> Bar
+    @test length([TFlag4a([Foo, Bar])...]) == 2
+    @test flags(TFlag4a([Foo, Bar])) === (Foo, Bar)
+    @test all(s1 === s2 for (s1, s2) ∈ zip(TFlag4a([Foo, Bar]), [Foo, Bar]))
+
+    # BigInt
+    @flagset TFlag4b a = big(1) << 160 --> Int b = big(1) << 192 --> Inf
+    @test length([TFlag4b([Int, Inf])...]) == 2
+    @test flags(TFlag4b([Int, Inf])) === (Int, Inf)
+    @test all(s1 === s2 for (s1, s2) ∈ zip(TFlag4b([Int, Inf]), [Int, Inf]))
 end
 
 @testset "Mask and set operations" begin
@@ -134,6 +146,10 @@ end # testset
     @test eltype(TFlag9) == Any
     @test typeof(Integer(TFlag9())) == UInt128
     @test typeof(Int(TFlag9())) == Int
+
+    # UInt128 and BigInt
+    @test typeof(Integer(TFlag4a())) == UInt128
+    @test typeof(Integer(TFlag4b())) == BigInt
 end # testset
 
 @testset "Validate type" begin

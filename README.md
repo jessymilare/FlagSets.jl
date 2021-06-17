@@ -130,8 +130,7 @@ julia> eltype(FontFlags2) == eltype(FontFlags3) == Symbol
 true
 ```
 
-The empty and the full set can be created with `typemin` and `typemax` (which is
-consistent with these function definitions).
+The empty and the full set can be created with `typemin` and `typemax`:
 ```julia
 julia> typemin(FontFlags1)
 FontFlags1([])

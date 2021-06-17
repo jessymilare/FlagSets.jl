@@ -40,6 +40,18 @@
     @test length(typemax(Flag3)) == 3
     @test Flag3(flag3a = true, flag3b = false, flag3c = true) == Flag3(:flag3a, :flag3c)
     @test flags(Flag3) == (:flag3a, :flag3b, :flag3c)
+
+    # UInt128
+    @symbol_flagset Flag4a::UInt128 a = UInt128(1) << 96 b = UInt128(1) << 120
+    @test length([Flag4a(:a, :b)...]) == 2
+    @test flags(Flag4a(:a, :b)) === (:a, :b)
+    @test all(s1 === s2 for (s1, s2) ∈ zip(Flag4a(:a, :b), [:a, :b]))
+
+    # BigInt
+    @symbol_flagset Flag4b::BigInt a = big(1) << 160 b = big(1) << 192
+    @test length([Flag4b(:a, :b)...]) == 2
+    @test flags(Flag4b(:a, :b)) === (:a, :b)
+    @test all(s1 === s2 for (s1, s2) ∈ zip(Flag4b(:a, :b), [:a, :b]))
 end
 
 @testset "Mask and set operations" begin
@@ -98,6 +110,10 @@ Flag7(::Integer) = typemax(Flag7)
     @test Integer(Flag7(BitMask(0x0000_0002))) === UInt8(2)
     @test Integer(Flag7([:flag7a, :flag7b])) === UInt8(3)
     @test Flag7(BitMask(0)) == typemin(Flag7)
+
+    # UInt128 and BigInt
+    @test typeof(Integer(Flag4a())) == UInt128
+    @test typeof(Integer(Flag4b())) == BigInt
 end # testset
 
 @testset "Validate type" begin
