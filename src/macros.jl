@@ -354,13 +354,13 @@ function parse_flag_specs(typename, FlagType, BaseType, flagspecs, symflags::Boo
     if length(flagspecs) == 1 && flagspecs[1] isa Expr && flagspecs[1].head === :block
         flagspecs = flagspecs[1].args
     end
-    flagspecs = filter(fs -> !(fs isa LineNumberNode), flagspecs)
     result = Any[]
     bit = one(BaseType)
     mask = zero(BaseType)
     flags = Set([])
     keys = Set([])
     for flagspec in flagspecs
+        flagspec isa LineNumberNode && continue
         (key, flag, next_bit) = parse_flag_spec(typename, FlagType, flagspec, symflags, __module__)
         bit::BaseType = something(next_bit, bit)
         bit <= zero(BaseType) && throw(overflow_error(typename, flagspec))
@@ -433,8 +433,6 @@ function expand_flagset(typespec, flagspecs, symflags::Bool, __module__)
     flags = Tuple(flag_vector[idx] for idx in indices)
     keys = Tuple(key_vector[idx] for idx in indices)
     keys_flags = ((key, flag) for (key, flag) ∈ zip(keys, flags) if !isnothing(key))
-
-    @show flags keys (keys_flags...,)
 
     blk = quote
         # flagset definition
