@@ -152,9 +152,8 @@ function get_flag_bit(::Type{T}, flag, default) where {T<:FlagSet}
 end
 
 function get_flag_bit(::Type{T}, flag) where {T<:FlagSet}
-    not_found = basetype(T)(0x7f)
-    val = get(flag_bit_map(T), flag, not_found)
-    val == not_found && flagset_argument_error(T, flag)
+    val = get(flag_bit_map(T), flag, nothing)
+    val === nothing && return flagset_argument_error(T, flag)
     val
 end
 

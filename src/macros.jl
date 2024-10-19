@@ -228,7 +228,7 @@ macro flagset(typespec::Union{Symbol,Expr}, flagspecs...)
     try
         return expand_flagset(typespec, flagspecs, false, __module__)
     catch ex
-        throw(ex isa UndefVarError ? undef_var_error_hint(ex) : ex)
+        ex isa UndefVarError ? throw(undef_var_error_hint(ex)) : rethrow()
     end
 end
 
