@@ -3,7 +3,7 @@
 
 # FlagSets.jl
 
-`FlagSet.jl` provides an `Enum`-like type for bit flag option values. The main features
+`FlagSets.jl` provides an `Enum`-like type for bit flag option values. The main features
 are:
 
 1. Flags have implicit numbering with incrementing powers of 2.

@@ -212,7 +212,7 @@ end
         @macrocall(@flagset MyFlags::UInt32 x = 1 y = 2),
     )
     @test_throws(
-        undef_var_error_hint(UndefVarError(:x)),
+        undef_var_error_hint(UndefVarError(:x, @__MODULE__)),
         @macrocall(@flagset MyFlags2 x)
     )
 end # testset
